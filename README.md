@@ -4,7 +4,7 @@
 [![Test Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com/quantsingularity/Quantis/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 📈 Quantitative Trading & Investment Analytics Platform
+## Quantitative Trading & Investment Analytics Platform
 
 Quantis is a comprehensive quantitative trading and investment analytics platform that combines advanced statistical models, machine learning algorithms, and real-time market data to provide powerful insights and automated trading strategies.
 
