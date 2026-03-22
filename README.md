@@ -58,6 +58,8 @@ Quantis/
 
 ## Key Features
 
+Quantis's functionality is divided into four main domains, each powered by dedicated services.
+
 ### 1. Data Processing
 
 - Real-time and historical market data
@@ -125,7 +127,7 @@ To set up the platform, ensure you have the following installed:
 - **Docker** and Docker Compose
 - **Kubernetes** (for production deployment)
 
-### Local Development Setup
+### Setup
 
 The recommended way to set up the development environment is using the provided scripts:
 
@@ -189,10 +191,12 @@ The project maintains an overall test coverage of **82%** across all components,
 
 Testing is categorized into four main types:
 
-1.  **Unit Tests**: Focused on individual functions, statistical models, and core trading logic.
-2.  **Integration Tests**: Validating end-to-end trading workflows, API endpoints, and database interactions.
-3.  **Performance Tests**: Measuring data processing throughput, backtesting speed, and API response times under load.
-4.  **Security Tests**: Ensuring the platform adheres to security standards and best practices.
+| Test Type         | Description                                                        |
+| ----------------- | ------------------------------------------------------------------ |
+| Unit Tests        | Validate individual functions, models, and core trading logic      |
+| Integration Tests | Validate end-to-end workflows, APIs, and database interactions     |
+| Performance Tests | Measure throughput, backtesting speed, and API response under load |
+| Security Tests    | Ensure compliance with security standards and best practices       |
 
 **Running Tests:** All tests can be executed using the `pytest` command from the root directory: `pytest`. Specific categories can be targeted (e.g., `pytest tests/unit/`).
 
