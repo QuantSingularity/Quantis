@@ -35,7 +35,7 @@ Quantis is a comprehensive quantitative trading and investment analytics platfor
 
 ## Overview
 
-Quantis provides a robust platform for quantitative analysis, algorithmic trading, and investment portfolio optimization. The system leverages advanced statistical models and machine learning algorithms to analyze market data, identify trading opportunities, and execute automated trading strategies. The microservices architecture ensures that each component—from data ingestion to strategy execution—is independent, resilient, and can be scaled horizontally to handle high-volume, low-latency market operations.
+Quantis provides a robust platform for quantitative analysis, algorithmic trading, and investment portfolio optimization. The system leverages advanced statistical models and machine learning algorithms to analyze market data, identify trading opportunities, and execute automated trading strategies. The microservices architecture ensures that each component from data ingestion to strategy execution is independent, resilient, and can be scaled horizontally to handle high-volume, low-latency market operations.
 
 ---
 
@@ -58,23 +58,29 @@ Quantis/
 
 ## Key Features
 
-Quantis's functionality is divided into four main domains, each powered by dedicated services.
+### 1. Data Processing
 
-### 1. Data Processing & Analysis
-
-The foundation of the platform lies in its ability to handle diverse financial data. This includes **Real-time Market Data** through seamless integration with multiple data sources, **Historical Data Analysis** using dedicated tools for efficient backtesting, and **Alternative Data Processing** to analyze non-traditional sources for unique insights. Furthermore, **Data Quality Assurance** is maintained through automated validation and cleaning processes to ensure the integrity of all financial data.
+- Real-time and historical market data
+- Alternative data support
+- Automated data validation
 
 ### 2. Quantitative Analysis
 
-Advanced mathematical and computational tools are used for signal generation and risk assessment. Quantis implements various **Statistical Models**, including time series analysis and factor analysis, alongside **Machine Learning Algorithms** (classification, regression, and clustering) for market prediction. For risk, it provides robust **Risk Models** such as **Value at Risk (VaR)** and comprehensive stress testing. Finally, **Portfolio Optimization** is achieved through the implementation of Modern Portfolio Theory (MPT) with support for custom constraints and optimization objectives.
+- Statistical and machine learning models
+- Risk metrics including VaR
+- Portfolio optimization tools
 
 ### 3. Trading Strategies
 
-Quantis provides a flexible framework for developing, testing, and deploying automated strategies. This includes a **Strategy Development Framework** for rapid creation and rigorous testing of trading algorithms, leading to **Algorithmic Trading** with automated, low-latency execution across connected brokers. The platform also handles **Signal Generation** through the automated creation of technical and fundamental indicators, all supported by a powerful **Backtesting Engine** for historical performance evaluation and optimization.
+- Strategy creation and testing
+- Signal generation
+- Backtesting and execution
 
 ### 4. Portfolio Management
 
-Tools are provided for monitoring, optimizing, and controlling investment portfolios. Key features include **Asset Allocation** to determine the optimal distribution of investments, and **Risk Management** with comprehensive tools for real-time monitoring of portfolio risk exposures. Users benefit from **Performance Analytics** with detailed metrics and visualizations, and **Rebalancing Strategies** that automate portfolio adjustments based on predefined rules and optimization results.
+- Asset allocation
+- Risk monitoring
+- Performance tracking and rebalancing
 
 ---
 
