@@ -9,9 +9,13 @@ import json
 import os
 import sys
 from datetime import datetime
-from core.logging import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def check_security_results() -> Any:
