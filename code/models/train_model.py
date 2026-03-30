@@ -16,7 +16,7 @@ class TimeSeriesModel(nn.Module):
 
     def __init__(
         self, input_size: Any, hidden_size: Any, output_size: Any, num_layers: Any = 2
-    ) -> Any:
+    ) -> None:
         super(TimeSeriesModel, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers

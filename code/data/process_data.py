@@ -9,7 +9,7 @@ categorical_features = ["category1", "category2"]
 
 class DataEngine:
 
-    def __init__(self, num_features: Any = None, cat_features: Any = None) -> Any:
+    def __init__(self, num_features: Any = None, cat_features: Any = None) -> None:
         self.numeric_features = num_features if num_features else numeric_features
         self.categorical_features = (
             cat_features if cat_features else categorical_features
