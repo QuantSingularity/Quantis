@@ -38,7 +38,7 @@ async def get_all_users(
     data_masking_manager: DataMaskingManager = Depends(get_data_masking_manager),
 ):
     """Retrieve all users (admin/privileged access only)"""
-    users = db.query(User).filter(User.is_deleted == False).all()
+    users = db.query(User).filter(not User.is_deleted).all()
 
     # Apply data masking if enabled
     masked_users = []
@@ -67,7 +67,7 @@ async def get_user_by_id(
     data_masking_manager: DataMaskingManager = Depends(get_data_masking_manager),
 ):
     """Retrieve a user by ID (admin/privileged access or self)"""
-    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+    user = db.query(User).filter(User.id == user_id, not User.is_deleted).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -107,7 +107,7 @@ async def update_user(
     current_user: User = Depends(get_current_user),
 ):
     """Update a user's information (admin/privileged access or self)"""
-    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+    user = db.query(User).filter(User.id == user_id, not User.is_deleted).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -151,7 +151,7 @@ async def delete_user(
     current_user: User = Depends(get_current_user),
 ):
     """Soft delete a user (admin/privileged access only)"""
-    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+    user = db.query(User).filter(User.id == user_id, not User.is_deleted).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"

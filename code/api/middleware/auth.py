@@ -198,7 +198,7 @@ class ApiKeyManager:
             user_service = UserService(db)
             if isinstance(user_id, str) and user_id.isdigit():
                 user_id = int(user_id)
-            return user_service.create_api_key(user_id, f"Legacy Key", expiry_days)
+            return user_service.create_api_key(user_id, "Legacy Key", expiry_days)
         finally:
             db.close()
 

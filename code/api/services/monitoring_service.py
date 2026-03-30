@@ -96,16 +96,12 @@ class MonitoringService:
     def get_database_metrics(self) -> DatabaseMetrics:
         """Get database performance metrics"""
         total_users = self.db.query(models.User).count()
-        active_users = (
-            self.db.query(models.User).filter(models.User.is_active == True).count()
-        )
+        active_users = self.db.query(models.User).filter(models.User.is_active).count()
         total_datasets = (
-            self.db.query(models.Dataset)
-            .filter(models.Dataset.is_active == True)
-            .count()
+            self.db.query(models.Dataset).filter(models.Dataset.is_active).count()
         )
         total_models = (
-            self.db.query(models.Model).filter(models.Model.is_active == True).count()
+            self.db.query(models.Model).filter(models.Model.is_active).count()
         )
         total_predictions = self.db.query(models.Prediction).count()
         today = datetime.utcnow().date()

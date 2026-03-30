@@ -57,7 +57,7 @@ def check_security_results() -> Any:
                 "medium": medium_severity,
                 "low": low_severity,
             }
-            logger.info(f"📊 Bandit SAST Results:")
+            logger.info("📊 Bandit SAST Results:")
             logger.info(f"   High Severity: {high_severity}")
             logger.info(f"   Medium Severity: {medium_severity}")
             logger.info(f"   Low Severity: {low_severity}")
@@ -92,7 +92,7 @@ def check_security_results() -> Any:
                 "status": "completed",
                 "vulnerabilities": vulnerability_count,
             }
-            logger.info(f"📊 Safety Dependency Scan Results:")
+            logger.info("📊 Safety Dependency Scan Results:")
             logger.info(f"   Vulnerable Dependencies: {vulnerability_count}")
             if vulnerability_count > 0:
                 logger.info("❌ FAIL: Vulnerable dependencies found!")
@@ -125,7 +125,7 @@ def check_security_results() -> Any:
                 semgrep_data = json.load(f)
             findings = len(semgrep_data.get("results", []))
             results_summary["semgrep"] = {"status": "completed", "findings": findings}
-            logger.info(f"📊 Semgrep SAST Results:")
+            logger.info("📊 Semgrep SAST Results:")
             logger.info(f"   Total Findings: {findings}")
             if findings > 50:
                 logger.info("⚠️  WARNING: Many security findings detected by Semgrep")
@@ -157,7 +157,7 @@ def check_security_results() -> Any:
     try:
         with open("security-results-summary.json", "w") as f:
             json.dump(results_summary, f, indent=2)
-        logger.info(f"\n📄 Results summary saved to security-results-summary.json")
+        logger.info("\n📄 Results summary saved to security-results-summary.json")
     except Exception as e:
         logger.info(f"⚠️  WARNING: Could not save results summary: {e}")
     return exit_code

@@ -209,7 +209,7 @@ def test_pydantic_schemas() -> Any:
             logger.error("✗ UserCreate schema validation failed")
             return False
         try:
-            invalid_user = UserCreate(
+            UserCreate(
                 username="test",
                 email="invalid-email",
                 password="weak",

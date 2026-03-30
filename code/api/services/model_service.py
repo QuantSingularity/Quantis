@@ -42,9 +42,7 @@ class ModelService:
         dataset = (
             self.db.query(models.Dataset)
             .filter(
-                and_(
-                    models.Dataset.id == dataset_id, models.Dataset.is_deleted == False
-                )
+                and_(models.Dataset.id == dataset_id, not models.Dataset.is_deleted)
             )
             .first()
         )
@@ -68,7 +66,7 @@ class ModelService:
     def get_model_by_id(self, model_id: int) -> Optional[models.Model]:
         return (
             self.db.query(models.Model)
-            .filter(and_(models.Model.id == model_id, models.Model.is_deleted == False))
+            .filter(and_(models.Model.id == model_id, not models.Model.is_deleted))
             .first()
         )
 
@@ -78,9 +76,7 @@ class ModelService:
         return (
             self.db.query(models.Model)
             .filter(
-                and_(
-                    models.Model.owner_id == owner_id, models.Model.is_deleted == False
-                )
+                and_(models.Model.owner_id == owner_id, not models.Model.is_deleted)
             )
             .offset(skip)
             .limit(limit)
@@ -90,7 +86,7 @@ class ModelService:
     def get_all_models(self, skip: int = 0, limit: int = 100) -> List[models.Model]:
         return (
             self.db.query(models.Model)
-            .filter(models.Model.is_deleted == False)
+            .filter(not models.Model.is_deleted)
             .offset(skip)
             .limit(limit)
             .all()

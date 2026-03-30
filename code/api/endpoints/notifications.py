@@ -95,7 +95,7 @@ async def mark_all_notifications_read(
 
     updated_count = (
         db.query(Notification)
-        .filter(Notification.user_id == current_user.id, Notification.is_read == False)
+        .filter(Notification.user_id == current_user.id, not Notification.is_read)
         .update({"is_read": True, "read_at": datetime.utcnow()})
     )
 

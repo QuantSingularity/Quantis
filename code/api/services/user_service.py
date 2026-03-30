@@ -46,7 +46,7 @@ class UserService:
             .filter(
                 and_(
                     models.models.User.username == username,
-                    models.models.User.is_active == True,
+                    models.models.User.is_active,
                 )
             )
             .first()
@@ -64,7 +64,7 @@ class UserService:
             .filter(
                 and_(
                     models.models.User.id == user_id,
-                    models.models.User.is_active == True,
+                    models.models.User.is_active,
                 )
             )
             .first()
@@ -77,7 +77,7 @@ class UserService:
             .filter(
                 and_(
                     models.models.User.username == username,
-                    models.models.User.is_active == True,
+                    models.models.User.is_active,
                 )
             )
             .first()
@@ -87,7 +87,7 @@ class UserService:
         """Get list of users"""
         return (
             self.db.query(models.User)
-            .filter(models.models.User.is_active == True)
+            .filter(models.models.User.is_active)
             .offset(skip)
             .limit(limit)
             .all()
@@ -143,11 +143,7 @@ class UserService:
         key_hash = models.ApiKey.hash_key(key)
         api_key = (
             self.db.query(models.ApiKey)
-            .filter(
-                and_(
-                    models.ApiKey.key_hash == key_hash, models.ApiKey.is_active == True
-                )
-            )
+            .filter(and_(models.ApiKey.key_hash == key_hash, models.ApiKey.is_active))
             .first()
         )
         if not api_key:
@@ -188,8 +184,6 @@ class UserService:
         """Get all API keys for a user"""
         return (
             self.db.query(models.ApiKey)
-            .filter(
-                and_(models.ApiKey.user_id == user_id, models.ApiKey.is_active == True)
-            )
+            .filter(and_(models.ApiKey.user_id == user_id, models.ApiKey.is_active))
             .all()
         )

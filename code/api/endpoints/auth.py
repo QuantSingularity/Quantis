@@ -305,9 +305,7 @@ async def get_current_user_from_token(
         )
     user = (
         db.query(User)
-        .filter(
-            User.id == int(user_id), User.is_active == True, User.is_deleted == False
-        )
+        .filter(User.id == int(user_id), User.is_active, not User.is_deleted)
         .first()
     )
     if not user:
@@ -349,8 +347,8 @@ async def get_current_user_from_api_key(
         db.query(ApiKey)
         .filter(
             ApiKey.key_hash == key_hash,
-            ApiKey.is_active == True,
-            ApiKey.is_deleted == False,
+            ApiKey.is_active,
+            not ApiKey.is_deleted,
         )
         .first()
     )
@@ -368,8 +366,8 @@ async def get_current_user_from_api_key(
         db.query(User)
         .filter(
             User.id == api_key_obj.user_id,
-            User.is_active == True,
-            User.is_deleted == False,
+            User.is_active,
+            not User.is_deleted,
         )
         .first()
     )
@@ -550,7 +548,7 @@ async def create_user_session(
     """Create a new user session, handling concurrent sessions and IP/User-Agent binding"""
     active_sessions = (
         db.query(UserSession)
-        .filter(UserSession.user_id == user.id, UserSession.is_active == True)
+        .filter(UserSession.user_id == user.id, UserSession.is_active)
         .order_by(UserSession.last_activity.asc())
         .all()
     )
@@ -573,7 +571,7 @@ async def create_user_session(
             UserSession.user_id == user.id,
             UserSession.ip_address == request.client.host,
             UserSession.user_agent == request.headers.get("user-agent"),
-            UserSession.is_active == True,
+            UserSession.is_active,
         )
         .first()
     )
@@ -656,9 +654,7 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[Token]:
         return None
     user = (
         db.query(User)
-        .filter(
-            User.id == int(user_id), User.is_active == True, User.is_deleted == False
-        )
+        .filter(User.id == int(user_id), User.is_active, not User.is_deleted)
         .first()
     )
     if not user:
@@ -668,7 +664,7 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[Token]:
         .filter(
             UserSession.user_id == user.id,
             UserSession.refresh_token == refresh_token,
-            UserSession.is_active == True,
+            UserSession.is_active,
         )
         .first()
     )

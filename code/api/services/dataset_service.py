@@ -62,9 +62,7 @@ class DatasetService:
         return (
             self.db.query(models.Dataset)
             .filter(
-                and_(
-                    models.Dataset.id == dataset_id, models.Dataset.is_deleted == False
-                )
+                and_(models.Dataset.id == dataset_id, not models.Dataset.is_deleted)
             )
             .first()
         )
@@ -78,7 +76,7 @@ class DatasetService:
             .filter(
                 and_(
                     models.Dataset.owner_id == owner_id,
-                    models.Dataset.is_deleted == False,
+                    not models.Dataset.is_deleted,
                 )
             )
             .offset(skip)
@@ -90,7 +88,7 @@ class DatasetService:
         """Get all datasets (admin only)"""
         return (
             self.db.query(models.Dataset)
-            .filter(models.Dataset.is_deleted == False)
+            .filter(not models.Dataset.is_deleted)
             .offset(skip)
             .limit(limit)
             .all()

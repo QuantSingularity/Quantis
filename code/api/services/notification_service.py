@@ -54,7 +54,7 @@ class NotificationService:
             models.Notification.user_id == user_id
         )
         if unread_only:
-            query = query.filter(models.Notification.is_read == False)
+            query = query.filter(not models.Notification.is_read)
         return (
             query.order_by(models.Notification.created_at.desc())
             .offset(skip)
@@ -85,7 +85,7 @@ class NotificationService:
             self.db.query(models.Notification)
             .filter(
                 models.Notification.user_id == user_id,
-                models.Notification.is_read == False,
+                not models.Notification.is_read,
             )
             .update({"is_read": True, "read_at": datetime.utcnow()})
         )
@@ -119,7 +119,7 @@ class NotificationService:
             self.db.query(models.Notification)
             .filter(
                 models.Notification.user_id == user_id,
-                models.Notification.is_read == False,
+                not models.Notification.is_read,
             )
             .count()
         )
@@ -191,7 +191,7 @@ class NotificationService:
             message = f"Your model '{model_name}' has been successfully trained."
             notification_type = "success"
             if metrics:
-                message += f"\n\nPerformance Metrics:\n"
+                message += "\n\nPerformance Metrics:\n"
                 for key, value in metrics.items():
                     if isinstance(value, float):
                         message += f"- {key}: {value:.4f}\n"
@@ -292,7 +292,7 @@ class NotificationService:
         """Send alert to all admin users"""
         admin_users = (
             self.db.query(models.User)
-            .filter(models.User.role == "admin", models.User.is_active == True)
+            .filter(models.User.role == "admin", models.User.is_active)
             .all()
         )
         admin_ids = [user.id for user in admin_users]
@@ -309,7 +309,7 @@ class NotificationService:
         count = (
             self.db.query(models.Notification)
             .filter(
-                models.Notification.is_read == True,
+                models.Notification.is_read,
                 models.Notification.read_at < cutoff_date,
             )
             .delete()

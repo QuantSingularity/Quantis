@@ -532,9 +532,9 @@ def send_notification_task(
             elif notification_type == NotificationType.SMS.value:
                 logger.info(f"Sending SMS notification to {user.phone_number}")
             elif notification_type == NotificationType.WEBHOOK.value:
-                logger.info(f"Sending webhook notification")
+                logger.info("Sending webhook notification")
             elif notification_type == NotificationType.IN_APP.value:
-                logger.info(f"In-app notification created")
+                logger.info("In-app notification created")
             notification.is_sent = True
             notification.sent_at = datetime.utcnow()
             notification.delivery_status = delivery_status

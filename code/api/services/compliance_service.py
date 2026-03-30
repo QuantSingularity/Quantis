@@ -174,7 +174,7 @@ class DataRetentionService:
                     .filter(
                         and_(
                             User.last_login < cutoff_date,
-                            User.deletion_requested == True,
+                            User.deletion_requested,
                         )
                     )
                     .all()
@@ -227,7 +227,7 @@ class DataRetentionService:
             expired_data = self.identify_expired_data(data_type)
             if not expired_data:
                 return True
-            archive_record = {
+            {
                 "archive_date": datetime.utcnow().isoformat(),
                 "data_type": data_type,
                 "record_count": len(expired_data),
@@ -257,7 +257,7 @@ class ConsentManagementService:
     ) -> bool:
         """Record user consent"""
         try:
-            consent_record = {
+            {
                 "user_id": user_id,
                 "consent_type": consent_type,
                 "granted": granted,
