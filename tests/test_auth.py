@@ -1,3 +1,4 @@
+from typing import Any
 import pytest
 from api.app import app
 from api.middleware.auth import ApiKeyManager, RateLimiter, Roles

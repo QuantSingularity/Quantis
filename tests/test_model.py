@@ -1,3 +1,4 @@
+from typing import Any
 import pytest
 import torch
 from models.mlflow_tracking import log_metrics
