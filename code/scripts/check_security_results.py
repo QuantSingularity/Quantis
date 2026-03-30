@@ -1,3 +1,5 @@
+from typing import Any
+
 """
 Security Results Checker
 Analyzes security scan results and determines if build should pass or fail

@@ -1,3 +1,4 @@
+from typing import Any
 from datetime import timedelta
 from feast import Entity, FeatureStore, FeatureView, ValueType
 
