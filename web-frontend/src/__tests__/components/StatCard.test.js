@@ -1,9 +1,8 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
-import StatCard from "../../components/StatCard";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import StatCard from "../../components/StatCard";
 
 const theme = createTheme();
 

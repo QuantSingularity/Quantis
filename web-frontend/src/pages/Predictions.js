@@ -1,23 +1,22 @@
-import React, { useState } from "react";
+import SendIcon from "@mui/icons-material/Send";
 import {
+  Alert,
   Box,
-  Typography,
+  Button,
   Card,
   CardContent,
   CardHeader,
   Divider,
-  Grid,
-  TextField,
-  Button,
   FormControl,
+  Grid,
   InputLabel,
-  Select,
   MenuItem,
+  Select,
   Slider,
-  Alert,
+  Typography,
   useTheme,
 } from "@mui/material";
-import SendIcon from "@mui/icons-material/Send";
+import { useState } from "react";
 
 const Predictions = () => {
   const theme = useTheme();
@@ -39,7 +38,7 @@ const Predictions = () => {
     });
   };
 
-  const handleSliderChange = (name) => (e, newValue) => {
+  const handleSliderChange = (name) => (_e, newValue) => {
     setFormData({
       ...formData,
       [name]: newValue,

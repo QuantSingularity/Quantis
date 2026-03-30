@@ -1,6 +1,16 @@
-import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import {
+  CloudUpload,
+  Dashboard as DashboardIcon,
+  Logout,
+  ModelTraining,
+  Psychology,
+  Storage,
+  TrendingUp,
+} from "@mui/icons-material";
+import {
+  Avatar,
+  Box,
+  Divider,
   Drawer,
   List,
   ListItem,
@@ -8,22 +18,9 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
-  Box,
-  Divider,
-  Avatar,
   useTheme,
 } from "@mui/material";
-import {
-  Dashboard as DashboardIcon,
-  TrendingUp,
-  Storage,
-  CloudUpload,
-  ModelTraining,
-  Settings,
-  Psychology,
-  BarChart,
-  Logout,
-} from "@mui/icons-material";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const drawerWidth = 240;

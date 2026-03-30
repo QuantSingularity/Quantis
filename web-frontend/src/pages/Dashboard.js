@@ -1,23 +1,21 @@
-import React from "react";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+import TimelineIcon from "@mui/icons-material/Timeline";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import {
   Box,
-  Grid,
-  Paper,
-  Typography,
+  Button,
   Card,
   CardContent,
   CardHeader,
   Divider,
-  Button,
+  Grid,
+  Typography,
   useTheme,
 } from "@mui/material";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import TimelineIcon from "@mui/icons-material/Timeline";
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import StatCard from "../components/StatCard";
-import LineChart from "../components/charts/LineChart";
 import BarChart from "../components/charts/BarChart";
+import LineChart from "../components/charts/LineChart";
+import StatCard from "../components/StatCard";
 
 const Dashboard = () => {
   const theme = useTheme();

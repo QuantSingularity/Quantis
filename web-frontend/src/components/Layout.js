@@ -1,8 +1,8 @@
-import React, { useState } from "react";
 import { Box, useMediaQuery } from "@mui/material";
 import { useTheme as useMuiTheme } from "@mui/material/styles";
-import Sidebar from "./Sidebar";
+import { useState } from "react";
 import Header from "./Header";
+import Sidebar from "./Sidebar";
 
 const Layout = ({ children }) => {
   const theme = useMuiTheme();

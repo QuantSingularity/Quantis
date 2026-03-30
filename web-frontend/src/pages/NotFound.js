@@ -1,7 +1,6 @@
-import React from "react";
-import { Box, Typography, Button, useTheme } from "@mui/material";
-import { Link as RouterLink } from "react-router-dom";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import { Box, Button, Typography, useTheme } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 
 const NotFound = () => {
   const theme = useTheme();

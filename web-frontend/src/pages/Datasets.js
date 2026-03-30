@@ -1,39 +1,39 @@
-import React, { useState, useEffect } from "react";
 import {
+  CloudUpload,
+  Delete,
+  InsertChart,
+  Search,
+  Storage as StorageIcon,
+  Visibility,
+} from "@mui/icons-material";
+import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Button,
-  Grid,
   Chip,
-  Alert,
   CircularProgress,
-  Paper,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
   IconButton,
-  Tooltip,
-  TextField,
   InputAdornment,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  TextField,
+  Tooltip,
+  Typography,
   useTheme,
 } from "@mui/material";
-import {
-  Delete,
-  Visibility,
-  CloudUpload,
-  Storage as StorageIcon,
-  Search,
-  InsertChart,
-} from "@mui/icons-material";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { datasetsAPI, handleApiError } from "../services/api";
 
@@ -52,7 +52,7 @@ const Datasets = () => {
 
   useEffect(() => {
     loadDatasets();
-  }, []);
+  }, [loadDatasets]);
 
   const loadDatasets = async () => {
     try {
@@ -108,7 +108,7 @@ const Datasets = () => {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   const filteredDatasets = datasets.filter(

@@ -1,14 +1,13 @@
-import React from "react";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import {
+  Avatar,
   Box,
   Card,
   CardContent,
   Typography,
-  Avatar,
   useTheme,
 } from "@mui/material";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 
 const StatCard = ({ title, value, change, positive, icon, color }) => {
   const theme = useTheme();
@@ -31,7 +30,7 @@ const StatCard = ({ title, value, change, positive, icon, color }) => {
           </Typography>
           <Avatar
             sx={{
-              bgcolor: color + "20",
+              bgcolor: `${color}20`,
               color: color,
               width: 40,
               height: 40,

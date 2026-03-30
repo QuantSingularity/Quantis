@@ -1,10 +1,9 @@
-import React from "react";
-import {
-  ThemeProvider as MuiThemeProvider,
-  createTheme,
-} from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { useContext, createContext, useState, useMemo } from "react";
+import {
+  createTheme,
+  ThemeProvider as MuiThemeProvider,
+} from "@mui/material/styles";
+import { createContext, useContext, useMemo, useState } from "react";
 
 // Create a context for the theme
 const ThemeContext = createContext({

@@ -1,35 +1,31 @@
-import React, { useState, useEffect } from "react";
 import {
+  Assessment,
+  DataUsage,
+  Delete,
+  Search,
+  Visibility,
+} from "@mui/icons-material";
+import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Button,
-  Grid,
   Chip,
-  Alert,
   CircularProgress,
-  Paper,
+  Grid,
   IconButton,
-  Tooltip,
-  LinearProgress,
-  TextField,
   InputAdornment,
+  LinearProgress,
+  Paper,
+  TextField,
+  Tooltip,
+  Typography,
   useTheme,
 } from "@mui/material";
-import {
-  PlayArrow,
-  Stop,
-  Delete,
-  Visibility,
-  TrendingUp,
-  DataUsage,
-  Search,
-  Assessment,
-  FilterList,
-} from "@mui/icons-material";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { modelsAPI, handleApiError } from "../services/api";
+import { handleApiError, modelsAPI } from "../services/api";
 
 const Models = () => {
   const theme = useTheme();
@@ -42,7 +38,7 @@ const Models = () => {
 
   useEffect(() => {
     loadModels();
-  }, []);
+  }, [loadModels]);
 
   const loadModels = async () => {
     try {
@@ -69,7 +65,7 @@ const Models = () => {
     }
   };
 
-  const handleViewDetails = (modelId) => {
+  const handleViewDetails = (_modelId) => {
     navigate(`/model-management`);
   };
 

@@ -1,24 +1,24 @@
-import React, { useState } from "react";
+import SaveIcon from "@mui/icons-material/Save";
 import {
+  Alert,
   Box,
-  Typography,
+  Button,
   Card,
   CardContent,
   CardHeader,
   Divider,
-  Grid,
-  TextField,
-  Button,
-  Switch,
   FormControlLabel,
-  Alert,
+  Grid,
   Snackbar,
+  Switch,
+  TextField,
+  Typography,
   useTheme,
 } from "@mui/material";
-import SaveIcon from "@mui/icons-material/Save";
+import { useState } from "react";
 
 const Settings = () => {
-  const theme = useTheme();
+  const _theme = useTheme();
   const [formData, setFormData] = useState({
     apiKey: "sk_test_***********************",
     apiEndpoint: "https://api.quantis.ai/v2",

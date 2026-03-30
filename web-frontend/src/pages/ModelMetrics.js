@@ -1,24 +1,23 @@
-import React from "react";
 import {
   Box,
-  Typography,
+  Button,
   Card,
   CardContent,
   CardHeader,
   Divider,
   Grid,
-  useTheme,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Button,
+  Typography,
+  useTheme,
 } from "@mui/material";
-import LineChart from "../components/charts/LineChart";
 import BarChart from "../components/charts/BarChart";
+import LineChart from "../components/charts/LineChart";
 
 const ModelMetrics = () => {
   const theme = useTheme();
@@ -179,8 +178,8 @@ const ModelMetrics = () => {
                               borderRadius: 1,
                               backgroundColor:
                                 version.status === "Active"
-                                  ? theme.palette.success.main + "20"
-                                  : theme.palette.text.secondary + "20",
+                                  ? `${theme.palette.success.main}20`
+                                  : `${theme.palette.text.secondary}20`,
                               color:
                                 version.status === "Active"
                                   ? theme.palette.success.main

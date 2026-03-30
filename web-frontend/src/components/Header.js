@@ -1,23 +1,22 @@
-import React from "react";
-import {
-  AppBar,
-  Toolbar,
-  IconButton,
-  Typography,
-  Box,
-  useMediaQuery,
-  Avatar,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import SearchIcon from "@mui/icons-material/Search";
+import {
+  AppBar,
+  Avatar,
+  Box,
+  IconButton,
+  Toolbar,
+  Typography,
+  useMediaQuery,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useTheme as useAppTheme } from "../context/ThemeContext";
 
 const Header = ({ toggleSidebar, sidebarOpen }) => {
   const theme = useTheme();
   const { mode } = useAppTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const _isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   return (
     <AppBar

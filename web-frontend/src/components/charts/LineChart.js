@@ -1,14 +1,14 @@
-import React from "react";
 import { Box, Typography, useTheme } from "@mui/material";
+import React from "react";
 import {
-  LineChart as RechartsLineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart as RechartsLineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts";
 
 const LineChart = ({ data, title, height = 300 }) => {
@@ -21,7 +21,7 @@ const LineChart = ({ data, title, height = 300 }) => {
     }
 
     // Check if data is in the old format (array of objects with id and data)
-    if (data[0] && data[0].data && Array.isArray(data[0].data)) {
+    if (data[0]?.data && Array.isArray(data[0].data)) {
       // Transform old format to new format
       const xValues = data[0].data.map((point) => point.x);
       return xValues.map((x) => {

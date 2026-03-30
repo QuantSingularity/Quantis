@@ -1,14 +1,14 @@
-import React from "react";
 import { Box, Typography, useTheme } from "@mui/material";
+import React from "react";
 import {
-  BarChart as RechartsBarChart,
   Bar,
+  CartesianGrid,
+  Legend,
+  BarChart as RechartsBarChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts";
 
 const BarChart = ({
@@ -27,7 +27,7 @@ const BarChart = ({
     }
 
     // Check if data needs transformation
-    if (data[0] && data[0].feature && data[0].value !== undefined) {
+    if (data[0]?.feature && data[0].value !== undefined) {
       // Transform feature importance data
       return data.map((item) => ({
         name: item.feature,

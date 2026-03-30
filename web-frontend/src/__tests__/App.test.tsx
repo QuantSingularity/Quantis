@@ -1,15 +1,15 @@
+import { configureStore } from "@reduxjs/toolkit";
 import {
+  act,
+  fireEvent,
   render,
   screen,
-  fireEvent,
   waitFor,
-  act,
 } from "@testing-library/react";
+import { ErrorBoundary } from "react-error-boundary";
 import { Provider } from "react-redux";
-import { configureStore } from "@reduxjs/toolkit";
 import App from "../App";
 import rootReducer from "../store/rootReducer";
-import { ErrorBoundary } from "react-error-boundary";
 
 const createTestStore = () => {
   return configureStore({

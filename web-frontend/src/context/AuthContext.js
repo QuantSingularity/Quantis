@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import {
   authAPI,
-  setAuthToken,
-  setApiKey,
   clearAuth,
   isAuthenticated,
+  setApiKey,
+  setAuthToken,
 } from "../services/api";
 
 const AuthContext = createContext({

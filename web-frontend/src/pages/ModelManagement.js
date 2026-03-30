@@ -1,48 +1,38 @@
-import React, { useState, useEffect } from "react";
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Grid,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Tooltip,
-  LinearProgress,
-  useTheme,
-} from "@mui/material";
 import {
   Add,
-  PlayArrow,
-  Stop,
-  Delete,
-  Visibility,
-  Edit,
-  TrendingUp,
   DataUsage,
+  Delete,
+  PlayArrow,
+  Visibility,
 } from "@mui/icons-material";
-import { modelsAPI, datasetsAPI, handleApiError } from "../services/api";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  Grid,
+  IconButton,
+  InputLabel,
+  LinearProgress,
+  MenuItem,
+  Paper,
+  Select,
+  TextField,
+  Tooltip,
+  Typography,
+  useTheme,
+} from "@mui/material";
+import { useEffect, useState } from "react";
 import BarChart from "../components/charts/BarChart";
-import LineChart from "../components/charts/LineChart";
+import { datasetsAPI, handleApiError, modelsAPI } from "../services/api";
 
 const ModelManagement = () => {
   const theme = useTheme();
@@ -67,7 +57,7 @@ const ModelManagement = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const loadData = async () => {
     try {

@@ -1,9 +1,9 @@
 import {
-  setAuthToken,
-  setApiKey,
   clearAuth,
-  isAuthenticated,
   handleApiError,
+  isAuthenticated,
+  setApiKey,
+  setAuthToken,
 } from "../../services/api";
 
 describe("API Service", () => {

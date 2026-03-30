@@ -1,15 +1,13 @@
-import React, { useState, useCallback } from "react";
+import { CheckCircle, CloudUpload, Description } from "@mui/icons-material";
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Button,
-  TextField,
-  Alert,
-  LinearProgress,
   Chip,
   Grid,
+  LinearProgress,
   Paper,
   Table,
   TableBody,
@@ -17,9 +15,11 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
+  Typography,
   useTheme,
 } from "@mui/material";
-import { CloudUpload, Description, CheckCircle } from "@mui/icons-material";
+import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { datasetsAPI, handleApiError } from "../services/api";
 
@@ -146,7 +146,7 @@ const DatasetUpload = () => {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   if (uploadState.success && uploadState.uploadedDataset) {
