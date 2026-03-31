@@ -1,6 +1,8 @@
 from typing import Any
+
 import optuna
 from pytorch_forecasting.models import TemporalFusionTransformer
+
 from ..train_model import train_and_validate
 
 

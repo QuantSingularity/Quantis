@@ -8,9 +8,11 @@ import hashlib
 import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+
 from cryptography.fernet import Fernet
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
+
 from ..models import AuditLog, User
 
 logger = logging.getLogger(__name__)

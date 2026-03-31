@@ -2,14 +2,16 @@
 Prediction service for handling model predictions
 """
 
+import logging
 import time
 from typing import Any, Dict, List, Optional
+
 import numpy as np
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
+
 from .. import models
 from .model_service import ModelService
-import logging
 
 logger = logging.getLogger(__name__)
 

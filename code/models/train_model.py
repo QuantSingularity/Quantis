@@ -1,5 +1,7 @@
-from typing import Any
+import logging
 import os
+from typing import Any
+
 import joblib
 import mlflow
 import numpy as np
@@ -7,8 +9,8 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+
 from .mlflow_tracking import log_experiment, register_model
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

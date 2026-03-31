@@ -4,9 +4,11 @@ User service for user management operations
 
 from datetime import datetime, timedelta
 from typing import List, Optional
-from .. import models
+
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
+
+from .. import models
 
 
 class UserService:

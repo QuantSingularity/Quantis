@@ -8,9 +8,9 @@ import uuid
 from datetime import datetime, timedelta
 from enum import Enum as PyEnum
 from typing import Any
+
 from passlib.context import CryptContext
 from sqlalchemy import (
-    Numeric,
     JSON,
     Boolean,
     Column,
@@ -20,17 +20,18 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Table,
     Text,
     UniqueConstraint,
     event,
 )
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from sqlalchemy.types import TypeDecorator, CHAR
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.types import CHAR, TypeDecorator
 
 Base = declarative_base()
 

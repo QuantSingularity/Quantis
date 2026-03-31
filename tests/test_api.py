@@ -1,5 +1,6 @@
-from typing import Any
 import asyncio
+from typing import Any
+
 import pytest
 from api.middleware.auth import validate_api_key
 from fastapi import HTTPException

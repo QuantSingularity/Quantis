@@ -4,8 +4,10 @@ Pydantic schemas for Quantis API with comprehensive validation
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
 from pydantic import UUID4, BaseModel, EmailStr, Field, validator
 from pydantic.types import confloat, conint, constr
+
 from .models import DatasetStatus, ModelStatus, ModelType, NotificationType
 
 

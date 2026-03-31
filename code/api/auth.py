@@ -4,10 +4,10 @@ Authentication utilities re-exported from endpoints.auth
 
 from .endpoints.auth import (
     AuditLogger,
-    rate_limit,
     get_current_user,
-    require_permission,
+    rate_limit,
     require_admin,
+    require_permission,
     require_verified_user,
 )
 

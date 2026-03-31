@@ -2,10 +2,11 @@
 WebSocket endpoints for Quantis API
 """
 
-from typing import Dict
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import json
 import logging
+from typing import Dict
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

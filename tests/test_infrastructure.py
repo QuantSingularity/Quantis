@@ -1,7 +1,9 @@
 from typing import Any
 from unittest.mock import Mock, patch
+
 import pytest
 from models.aws_deploy import deploy_to_aws
+
 from monitoring.metrics_collector import MetricsCollector
 
 

@@ -7,12 +7,14 @@ import os
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
 import joblib
 import numpy as np
 import pandas as pd
 from celery import Celery, Task
 from celery.result import AsyncResult
 from sqlalchemy.orm import Session
+
 from .config import get_settings
 from .database import SessionLocal
 from .models import (
@@ -562,6 +564,7 @@ def fetch_market_data_task(
     """Fetch market data for given symbols"""
     try:
         import yfinance as yf
+
         from .models import MarketData
 
         db = SessionLocal()

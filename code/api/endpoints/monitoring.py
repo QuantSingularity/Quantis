@@ -5,18 +5,19 @@ Monitoring and system health endpoints
 from datetime import datetime, timedelta
 from typing import List, Optional
 
+import models
 import psutil
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
+from ..auth import get_current_user, require_admin
+
 # Local application imports - adjust if your project layout differs
 from ..database import get_db
-import models
-from ..services.user_service import UserService
-from ..auth import get_current_user, require_admin
 from ..models import User
+from ..services.user_service import UserService
 
 router = APIRouter()
 

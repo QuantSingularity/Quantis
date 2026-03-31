@@ -6,6 +6,7 @@ import logging
 import time
 from datetime import datetime
 from typing import Any, Dict
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 

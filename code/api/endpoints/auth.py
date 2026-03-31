@@ -10,6 +10,7 @@ import time
 from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Optional
+
 import pyotp
 import qrcode
 import redis.asyncio as redis
@@ -18,10 +19,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+
 from ..config import get_settings
 from ..database import get_db, get_redis
-from ..models import AuditLog
-from ..models import ApiKey, User, UserSession
+from ..models import ApiKey, AuditLog, User, UserSession
 from ..schemas import Token
 
 logger = logging.getLogger(__name__)

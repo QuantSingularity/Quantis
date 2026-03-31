@@ -10,7 +10,9 @@ from email.mime.base import MimeBase
 from email.mime.multipart import MimeMultipart
 from email.mime.text import MimeText
 from typing import Any, Dict, List, Optional
+
 from sqlalchemy.orm import Session
+
 from .. import models
 from ..config import get_settings
 

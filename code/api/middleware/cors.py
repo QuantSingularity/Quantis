@@ -2,7 +2,8 @@
 CORS middleware for handling cross-origin requests
 """
 
-from typing import List, Optional, Any
+from typing import Any, List, Optional
+
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware

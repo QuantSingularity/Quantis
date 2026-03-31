@@ -1,5 +1,6 @@
 from typing import Any
 from unittest.mock import MagicMock, patch
+
 import pytest
 import torch
 from models.train_model import TemporalFusionTransformer, train_model

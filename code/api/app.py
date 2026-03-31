@@ -6,6 +6,7 @@ import json
 import time
 from contextlib import asynccontextmanager
 from typing import Any, Dict
+
 import structlog
 from fastapi import (
     Depends,
@@ -16,11 +17,11 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import (
     http_exception_handler,
     request_validation_exception_handler,
 )
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -28,20 +29,13 @@ from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from .auth import AuditLogger, rate_limit
 from .config import Settings, get_settings
 from .database import close_redis, get_db, get_redis, health_check, init_db
-from .endpoints import (
-    auth,
-    datasets,
-    financial,
-    models as models_endpoint,
-    monitoring,
-    notifications,
-    prediction,
-    users,
-    websocket,
-)
+from .endpoints import auth, datasets, financial
+from .endpoints import models as models_endpoint
+from .endpoints import monitoring, notifications, prediction, users, websocket
 from .models import User
 from .schemas import HealthCheck
 

@@ -5,11 +5,13 @@ Authentication middleware with database integration
 import os
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from jose import jwt
+from typing import Any, Dict, List, Optional
+
 from fastapi import Depends, Header, HTTPException, Security
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
+from jose import jwt
 from sqlalchemy.orm import Session
+
 from ..database import SessionLocal, get_db
 from ..services.user_service import UserService
 

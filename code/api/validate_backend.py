@@ -7,7 +7,6 @@ import os
 import sys
 import traceback
 from datetime import datetime
-
 from typing import Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
@@ -111,14 +110,8 @@ def test_data_models() -> Any:
     logger.info("Testing data models...")
     try:
         from database import SessionLocal
-        from .models import (
-            Dataset,
-            Model,
-            ModelStatus,
-            ModelType,
-            User,
-            UserRole,
-        )
+
+        from .models import Dataset, Model, ModelStatus, ModelType, User, UserRole
 
         db = SessionLocal()
         try:

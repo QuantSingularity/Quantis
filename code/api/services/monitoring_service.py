@@ -7,9 +7,11 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
+
 import psutil
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
 from .. import models
 from ..config import get_settings
 from ..middleware.logging import metrics_collector

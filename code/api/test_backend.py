@@ -4,10 +4,11 @@ Test script for Quantis API
 
 import os
 import sys
-
 from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import logging
+
 import database
 import numpy as np
 import pandas as pd
@@ -15,7 +16,6 @@ from services.dataset_service import DatasetService
 from services.model_service import ModelService
 from services.prediction_service import PredictionService
 from services.user_service import UserService
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

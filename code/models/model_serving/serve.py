@@ -1,4 +1,5 @@
 from typing import Any
+
 import mlflow.pyfunc
 import torch
 from fastapi import APIRouter

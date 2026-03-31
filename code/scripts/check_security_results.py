@@ -6,10 +6,10 @@ Analyzes security scan results and determines if build should pass or fail
 """
 
 import json
+import logging
 import os
 import sys
 from datetime import datetime
-import logging
 
 logging.basicConfig(
     level=logging.INFO,
