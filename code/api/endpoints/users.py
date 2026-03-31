@@ -3,9 +3,10 @@ User management endpoints for Quantis API
 """
 
 import logging
+from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 

@@ -2,7 +2,10 @@
 Dataset service for data management operations
 """
 
+import logging
 import os
+import tempfile
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -13,6 +16,7 @@ from .. import models
 from ..config import get_settings
 from ..database import EncryptionManager
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 

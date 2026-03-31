@@ -5,7 +5,7 @@ FastAPI application with comprehensive backend features
 import json
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import structlog
 from fastapi import (
