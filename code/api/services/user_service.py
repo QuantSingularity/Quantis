@@ -5,10 +5,13 @@ User service for user management operations
 from datetime import datetime, timedelta
 from typing import List, Optional
 
+from passlib.context import CryptContext
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from .. import models
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class UserService:
@@ -22,10 +25,7 @@ class UserService:
         """Create a new user"""
         existing_user = (
             self.db.query(models.User)
-            .filter(
-                (models.models.User.username == username)
-                | (models.models.User.email == email)
-            )
+            .filter((models.User.username == username) | (models.User.email == email))
             .first()
         )
         if existing_user:
@@ -33,7 +33,7 @@ class UserService:
         user = models.User(
             username=username,
             email=email,
-            hashed_password=models.models.User.hash_password(password),
+            hashed_password=pwd_context.hash(password),
             role=role,
         )
         self.db.add(user)
@@ -47,8 +47,8 @@ class UserService:
             self.db.query(models.User)
             .filter(
                 and_(
-                    models.models.User.username == username,
-                    models.models.User.is_active,
+                    models.User.username == username,
+                    models.User.is_active == True,
                 )
             )
             .first()
@@ -65,8 +65,8 @@ class UserService:
             self.db.query(models.User)
             .filter(
                 and_(
-                    models.models.User.id == user_id,
-                    models.models.User.is_active,
+                    models.User.id == user_id,
+                    models.User.is_active == True,
                 )
             )
             .first()
@@ -78,8 +78,8 @@ class UserService:
             self.db.query(models.User)
             .filter(
                 and_(
-                    models.models.User.username == username,
-                    models.models.User.is_active,
+                    models.User.username == username,
+                    models.User.is_active == True,
                 )
             )
             .first()
@@ -89,7 +89,7 @@ class UserService:
         """Get list of users"""
         return (
             self.db.query(models.User)
-            .filter(models.models.User.is_active)
+            .filter(models.User.is_active == True)
             .offset(skip)
             .limit(limit)
             .all()
@@ -103,7 +103,7 @@ class UserService:
         for key, value in kwargs.items():
             if hasattr(user, key) and key != "id":
                 if key == "password":
-                    user.hashed_password = models.models.User.hash_password(value)
+                    user.hashed_password = pwd_context.hash(value)
                 else:
                     setattr(user, key, value)
         user.updated_at = datetime.utcnow()
@@ -145,7 +145,11 @@ class UserService:
         key_hash = models.ApiKey.hash_key(key)
         api_key = (
             self.db.query(models.ApiKey)
-            .filter(and_(models.ApiKey.key_hash == key_hash, models.ApiKey.is_active))
+            .filter(
+                and_(
+                    models.ApiKey.key_hash == key_hash, models.ApiKey.is_active == True
+                )
+            )
             .first()
         )
         if not api_key:
@@ -186,6 +190,8 @@ class UserService:
         """Get all API keys for a user"""
         return (
             self.db.query(models.ApiKey)
-            .filter(and_(models.ApiKey.user_id == user_id, models.ApiKey.is_active))
+            .filter(
+                and_(models.ApiKey.user_id == user_id, models.ApiKey.is_active == True)
+            )
             .all()
         )

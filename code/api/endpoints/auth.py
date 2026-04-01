@@ -306,7 +306,7 @@ async def get_current_user_from_token(
         )
     user = (
         db.query(User)
-        .filter(User.id == int(user_id), User.is_active, not User.is_deleted)
+        .filter(User.id == int(user_id), User.is_active, User.is_deleted == False)
         .first()
     )
     if not user:
@@ -324,7 +324,7 @@ async def get_current_user_from_token(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="MFA code required"
             )
-        if not user.mfa_secret:
+        if user.mfa_secret == False:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="MFA enabled but secret not found",
@@ -349,7 +349,7 @@ async def get_current_user_from_api_key(
         .filter(
             ApiKey.key_hash == key_hash,
             ApiKey.is_active,
-            not ApiKey.is_deleted,
+            ApiKey.is_deleted == False,
         )
         .first()
     )
@@ -368,7 +368,7 @@ async def get_current_user_from_api_key(
         .filter(
             User.id == api_key_obj.user_id,
             User.is_active,
-            not User.is_deleted,
+            User.is_deleted == False,
         )
         .first()
     )
@@ -655,7 +655,7 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[Token]:
         return None
     user = (
         db.query(User)
-        .filter(User.id == int(user_id), User.is_active, not User.is_deleted)
+        .filter(User.id == int(user_id), User.is_active, User.is_deleted == False)
         .first()
     )
     if not user:

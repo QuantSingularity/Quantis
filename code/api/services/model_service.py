@@ -44,7 +44,9 @@ class ModelService:
         dataset = (
             self.db.query(models.Dataset)
             .filter(
-                and_(models.Dataset.id == dataset_id, not models.Dataset.is_deleted)
+                and_(
+                    models.Dataset.id == dataset_id, models.Dataset.is_deleted == False
+                )
             )
             .first()
         )
@@ -68,7 +70,7 @@ class ModelService:
     def get_model_by_id(self, model_id: int) -> Optional[models.Model]:
         return (
             self.db.query(models.Model)
-            .filter(and_(models.Model.id == model_id, not models.Model.is_deleted))
+            .filter(and_(models.Model.id == model_id, models.Model.is_deleted == False))
             .first()
         )
 
@@ -78,7 +80,9 @@ class ModelService:
         return (
             self.db.query(models.Model)
             .filter(
-                and_(models.Model.owner_id == owner_id, not models.Model.is_deleted)
+                and_(
+                    models.Model.owner_id == owner_id, models.Model.is_deleted == False
+                )
             )
             .offset(skip)
             .limit(limit)
@@ -88,7 +92,7 @@ class ModelService:
     def get_all_models(self, skip: int = 0, limit: int = 100) -> List[models.Model]:
         return (
             self.db.query(models.Model)
-            .filter(not models.Model.is_deleted)
+            .filter(models.Model.is_deleted == False)
             .offset(skip)
             .limit(limit)
             .all()
@@ -131,10 +135,9 @@ class ModelService:
         if not model:
             return False
         try:
-            os.makedirs(settings.model_storage_directory, exist_ok=True)
-            file_path = os.path.join(
-                settings.model_storage_directory, f"model_{model_id}.pkl"
-            )
+            storage_dir = settings.storage_directory
+            os.makedirs(storage_dir, exist_ok=True)
+            file_path = os.path.join(storage_dir, f"model_{model_id}.pkl")
             joblib.dump(trained_model, file_path)
             model.file_path = file_path
             model.status = models.ModelStatus.TRAINED

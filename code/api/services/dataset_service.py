@@ -19,6 +19,8 @@ from ..database import EncryptionManager
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+ALLOWED_FILE_TYPES = [".csv", ".json", ".xlsx", ".xls", ".parquet"]
+
 
 class DatasetService:
 
@@ -68,7 +70,9 @@ class DatasetService:
         return (
             self.db.query(models.Dataset)
             .filter(
-                and_(models.Dataset.id == dataset_id, not models.Dataset.is_deleted)
+                and_(
+                    models.Dataset.id == dataset_id, models.Dataset.is_deleted == False
+                )
             )
             .first()
         )
@@ -82,7 +86,7 @@ class DatasetService:
             .filter(
                 and_(
                     models.Dataset.owner_id == owner_id,
-                    not models.Dataset.is_deleted,
+                    models.Dataset.is_deleted == False,
                 )
             )
             .offset(skip)
@@ -94,7 +98,7 @@ class DatasetService:
         """Get all datasets (admin only)"""
         return (
             self.db.query(models.Dataset)
-            .filter(not models.Dataset.is_deleted)
+            .filter(models.Dataset.is_deleted == False)
             .offset(skip)
             .limit(limit)
             .all()
@@ -141,6 +145,7 @@ class DatasetService:
         """Load dataset data as pandas DataFrame, with decryption if enabled"""
         if not os.path.exists(file_path):
             return None
+        tmp_file_path = file_path
         try:
             if settings.compliance.enable_data_encryption:
                 with open(file_path, "r", encoding="utf-8") as f:
@@ -151,18 +156,18 @@ class DatasetService:
                 ) as tmp_file:
                     tmp_file.write(decrypted_content.encode("utf-8"))
                     tmp_file_path = tmp_file.name
-            else:
-                tmp_file_path = file_path
-            if tmp_file_path.endswith(".csv") or tmp_file_path.endswith(".tmp"):
+
+            _, ext = os.path.splitext(file_path.lower())
+            if ext == ".csv" or tmp_file_path.endswith(".tmp"):
                 return pd.read_csv(tmp_file_path)
-            elif tmp_file_path.endswith(".json"):
+            elif ext == ".json":
                 return pd.read_json(tmp_file_path)
-            elif tmp_file_path.endswith(tuple(settings.allowed_file_types)):
-                if tmp_file_path.endswith((".xlsx", ".xls")):
-                    return pd.read_excel(tmp_file_path)
-                else:
-                    return None
+            elif ext in (".xlsx", ".xls"):
+                return pd.read_excel(tmp_file_path)
+            elif ext == ".parquet":
+                return pd.read_parquet(tmp_file_path)
             else:
+                logger.warning(f"Unsupported file type: {ext}")
                 return None
         except Exception as e:
             logger.error(f"Error loading or decrypting dataset from {file_path}: {e}")
@@ -170,8 +175,8 @@ class DatasetService:
         finally:
             if (
                 settings.compliance.enable_data_encryption
+                and tmp_file_path != file_path
                 and os.path.exists(tmp_file_path)
-                and (tmp_file_path != file_path)
             ):
                 os.remove(tmp_file_path)
 

@@ -2,14 +2,15 @@
 CORS middleware for handling cross-origin requests
 """
 
+import re
 from typing import Any, List, Optional
 
 from fastapi import Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
-class CORSMiddleware(BaseHTTPMiddleware):
+class CustomCORSMiddleware(BaseHTTPMiddleware):
     """CORS middleware with additional security features"""
 
     def __init__(
@@ -63,13 +64,11 @@ class CORSMiddleware(BaseHTTPMiddleware):
 
     def _create_preflight_response(self, request: Request) -> Any:
         """Create response for preflight OPTIONS requests"""
-        from fastapi.responses import Response
-
         response = Response()
         self._add_cors_headers(request, response)
         return response
 
-    def _add_cors_headers(self, request: Request, response: Any) -> Any:
+    def _add_cors_headers(self, request: Request, response: Any) -> None:
         """Add CORS headers to response"""
         origin = request.headers.get("origin")
         if self._is_origin_allowed(origin):
@@ -92,13 +91,11 @@ class CORSMiddleware(BaseHTTPMiddleware):
         if origin in self.allow_origins:
             return True
         if self.allow_origin_regex:
-            import re
-
             return bool(re.match(self.allow_origin_regex, origin))
         return False
 
 
-def setup_cors(app: Any, environment: str = "development") -> Any:
+def setup_cors(app: Any, environment: str = "development") -> None:
     """Setup CORS middleware based on environment"""
     if environment == "production":
         allowed_origins = [
@@ -119,7 +116,7 @@ def setup_cors(app: Any, environment: str = "development") -> Any:
         allowed_origins = ["*"]
         allow_credentials = False
     app.add_middleware(
-        CORSMiddleware,
+        CustomCORSMiddleware,
         allow_origins=allowed_origins,
         allow_credentials=allow_credentials,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],

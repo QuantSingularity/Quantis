@@ -219,10 +219,10 @@ async def get_datasets(
     DatasetService(db)
 
     if require_permission("read_all_datasets")(current_user):
-        query = db.query(Dataset).filter(not Dataset.is_deleted)
+        query = db.query(Dataset).filter(Dataset.is_deleted == False)
     else:
         query = db.query(Dataset).filter(
-            Dataset.owner_id == current_user.id, not Dataset.is_deleted
+            Dataset.owner_id == current_user.id, Dataset.is_deleted == False
         )
 
     query = data_retention_manager.apply_retention_policy("datasets", query)

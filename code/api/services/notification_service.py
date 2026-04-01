@@ -56,7 +56,7 @@ class NotificationService:
             models.Notification.user_id == user_id
         )
         if unread_only:
-            query = query.filter(not models.Notification.is_read)
+            query = query.filter(models.Notification.is_read == False)
         return (
             query.order_by(models.Notification.created_at.desc())
             .offset(skip)
@@ -87,7 +87,7 @@ class NotificationService:
             self.db.query(models.Notification)
             .filter(
                 models.Notification.user_id == user_id,
-                not models.Notification.is_read,
+                models.Notification.is_read == False,
             )
             .update({"is_read": True, "read_at": datetime.utcnow()})
         )
@@ -121,7 +121,7 @@ class NotificationService:
             self.db.query(models.Notification)
             .filter(
                 models.Notification.user_id == user_id,
-                not models.Notification.is_read,
+                models.Notification.is_read == False,
             )
             .count()
         )
@@ -136,7 +136,7 @@ class NotificationService:
         attachments: Optional[List[str]] = None,
     ) -> bool:
         """Send email notification"""
-        if not self._is_email_configured():
+        if self._is_email_configured == False():
             logger.warning("Email not configured, skipping email notification")
             return False
         try:

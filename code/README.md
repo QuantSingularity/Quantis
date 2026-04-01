@@ -42,11 +42,11 @@ code/
 │   ├── endpoints/          # API route handlers
 │   ├── middleware/         # Request/response middleware
 │   ├── services/           # Business logic layer
-│   ├── models.py          # Database models
-│   ├── schemas.py         # Pydantic validation schemas
-│   ├── config.py          # Configuration management
-│   ├── database.py        # Database connection/session
-│   └── app.py             # FastAPI application entry
+│   ├── models.py           # Database models
+│   ├── schemas.py          # Pydantic validation schemas
+│   ├── config.py           # Configuration management
+│   ├── database.py         # Database connection/session
+│   └── app.py              # FastAPI application entry
 ├── data/                   # Data processing modules
 ├── models/                 # ML model training/serving
 ├── notebooks/              # Jupyter notebooks

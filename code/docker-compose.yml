@@ -1,0 +1,103 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-quantis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quantispassword}
+      POSTGRES_DB: ${POSTGRES_DB:-quantis}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quantis}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redispassword}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test:
+        ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispassword}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-quantis}:${POSTGRES_PASSWORD:-quantispassword}@db:5432/${POSTGRES_DB:-quantis}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - model_storage:/app/models
+      - dataset_storage:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    command: celery -A api.tasks.celery_app worker --loglevel=info --concurrency=2
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-quantis}:${POSTGRES_PASSWORD:-quantispassword}@db:5432/${POSTGRES_DB:-quantis}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - model_storage:/app/models
+      - dataset_storage:/app/data
+
+  flower:
+    image: mher/flower:2.0
+    restart: unless-stopped
+    environment:
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379/0
+      FLOWER_BASIC_AUTH: ${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-flowerpassword}
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - worker
+
+volumes:
+  postgres_data:
+  redis_data:
+  model_storage:
+  dataset_storage:

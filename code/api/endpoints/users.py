@@ -39,9 +39,8 @@ async def get_all_users(
     data_masking_manager: DataMaskingManager = Depends(get_data_masking_manager),
 ):
     """Retrieve all users (admin/privileged access only)"""
-    users = db.query(User).filter(not User.is_deleted).all()
+    users = db.query(User).filter(User.is_deleted == False).all()
 
-    # Apply data masking if enabled
     masked_users = []
     for user in users:
         user_dict = UserResponse.from_orm(user).dict()
@@ -68,16 +67,13 @@ async def get_user_by_id(
     data_masking_manager: DataMaskingManager = Depends(get_data_masking_manager),
 ):
     """Retrieve a user by ID (admin/privileged access or self)"""
-    user = db.query(User).filter(User.id == user_id, not User.is_deleted).first()
+    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    # Ensure user can only access their own data unless they have admin/read_users permission
-    if not (
-        current_user.id == user_id or require_permission("read_all_users")(current_user)
-    ):
+    if current_user.id != user_id and current_user.role not in ("admin",):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this user's data",
@@ -108,17 +104,13 @@ async def update_user(
     current_user: User = Depends(get_current_user),
 ):
     """Update a user's information (admin/privileged access or self)"""
-    user = db.query(User).filter(User.id == user_id, not User.is_deleted).first()
+    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    # Ensure user can only update their own data unless they have admin/update_users permission
-    if not (
-        current_user.id == user_id
-        or require_permission("update_all_users")(current_user)
-    ):
+    if current_user.id != user_id and current_user.role not in ("admin",):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this user's data",
@@ -152,14 +144,13 @@ async def delete_user(
     current_user: User = Depends(get_current_user),
 ):
     """Soft delete a user (admin/privileged access only)"""
-    user = db.query(User).filter(User.id == user_id, not User.is_deleted).first()
+    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    # Prevent self-deletion for admin users
-    if current_user.id == user_id and require_permission("admin")(current_user):
+    if current_user.id == user_id and current_user.role == "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin users cannot delete their own account.",
@@ -193,7 +184,6 @@ async def create_role(
 ):
     """Create a new role"""
     try:
-        # Check if role name already exists
         existing_role = (
             db.query(Role).filter(Role.role_name == role_data.role_name).first()
         )
@@ -203,7 +193,6 @@ async def create_role(
                 detail="Role name already exists.",
             )
 
-        # Validate permissions
         permissions = (
             db.query(Permission)
             .filter(Permission.id.in_(role_data.permission_ids))
@@ -334,7 +323,6 @@ async def delete_role(
             status_code=status.HTTP_404_NOT_FOUND, detail="Role not found."
         )
 
-    # Prevent deletion of roles that have associated users
     if db.query(User).filter(User.role_id == role_id).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -438,7 +426,6 @@ async def delete_permission(
             status_code=status.HTTP_404_NOT_FOUND, detail="Permission not found."
         )
 
-    # Prevent deletion of permissions that are assigned to roles
     if permission.roles:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

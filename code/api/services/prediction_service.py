@@ -32,7 +32,7 @@ class PredictionService:
         model = self.model_service.get_model_by_id(model_id)
         if not model:
             raise ValueError("Model not found")
-        if model.status != "trained":
+        if model.status != models.ModelStatus.TRAINED:
             raise ValueError("Model is not trained yet")
         try:
             start_time = time.time()
@@ -43,7 +43,7 @@ class PredictionService:
             try:
                 probabilities = trained_model.predict_proba([input_data])
                 confidence_score = float(np.max(probabilities))
-            except:
+            except Exception:
                 confidence_score = 0.8
             execution_time = int((time.time() - start_time) * 1000)
             if isinstance(prediction_result, np.ndarray):
@@ -61,7 +61,7 @@ class PredictionService:
             self.db.refresh(prediction)
             return prediction
         except Exception as e:
-            logger.info(f"Error creating prediction: {e}")
+            logger.error(f"Error creating prediction: {e}")
             raise ValueError(f"Prediction failed: {str(e)}")
 
     def get_prediction_by_id(self, prediction_id: int) -> Optional[models.Prediction]:
@@ -79,7 +79,7 @@ class PredictionService:
         return (
             self.db.query(models.Prediction)
             .filter(models.Prediction.user_id == user_id)
-            .order_by(desc(Prediction.created_at))
+            .order_by(desc(models.Prediction.created_at))
             .offset(skip)
             .limit(limit)
             .all()
@@ -92,7 +92,7 @@ class PredictionService:
         return (
             self.db.query(models.Prediction)
             .filter(models.Prediction.model_id == model_id)
-            .order_by(desc(Prediction.created_at))
+            .order_by(desc(models.Prediction.created_at))
             .offset(skip)
             .limit(limit)
             .all()
@@ -135,18 +135,14 @@ class PredictionService:
         avg_execution_time = np.mean(
             [p.execution_time_ms for p in predictions if p.execution_time_ms]
         )
-        predictions_by_model = {}
+        predictions_by_model: Dict[int, int] = {}
         for prediction in predictions:
-            model_id = prediction.model_id
-            if model_id not in predictions_by_model:
-                predictions_by_model[model_id] = 0
-            predictions_by_model[model_id] += 1
-        predictions_by_day = {}
+            mid = prediction.model_id
+            predictions_by_model[mid] = predictions_by_model.get(mid, 0) + 1
+        predictions_by_day: Dict[str, int] = {}
         for prediction in predictions:
             day = prediction.created_at.date().isoformat()
-            if day not in predictions_by_day:
-                predictions_by_day[day] = 0
-            predictions_by_day[day] += 1
+            predictions_by_day[day] = predictions_by_day.get(day, 0) + 1
         return {
             "total_predictions": total_predictions,
             "avg_confidence": float(avg_confidence),
@@ -165,6 +161,6 @@ class PredictionService:
                 prediction = self.create_prediction(user_id, model_id, input_data)
                 predictions.append(prediction)
             except Exception as e:
-                logger.info(f"Error in batch prediction: {e}")
+                logger.error(f"Error in batch prediction: {e}")
                 continue
         return predictions

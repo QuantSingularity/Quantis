@@ -57,6 +57,23 @@ class EncryptionConfig:
     key_rotation_interval_days: int = 365
 
 
+class CeleryConfig:
+    """Celery task queue configuration"""
+
+    broker_url: str = "redis://localhost:6379/0"
+    result_backend: str = "redis://localhost:6379/0"
+    task_serializer: str = "json"
+    result_serializer: str = "json"
+    accept_content: list = None
+    timezone: str = "UTC"
+    enable_utc: bool = True
+    task_routes: dict = None
+
+    def __init__(self):
+        self.accept_content = ["json"]
+        self.task_routes = {}
+
+
 class Settings(BaseSettings):
     """Main application settings"""
 
@@ -98,6 +115,23 @@ class Settings(BaseSettings):
 
     # Storage configuration
     storage_directory: str = "./models"
+    upload_directory: str = Field(
+        default="./uploads", description="Directory for uploaded files"
+    )
+    model_directory: str = Field(
+        default="./models", description="Directory for trained models"
+    )
+    max_upload_size: int = Field(
+        default=104857600, description="Max upload size in bytes (default 100MB)"
+    )
+    allowed_file_types: List[str] = Field(
+        default=[".csv", ".json", ".xlsx", ".xls", ".parquet"],
+        description="Allowed upload file extensions",
+    )
+
+    @property
+    def model_storage_directory(self) -> str:
+        return self.storage_directory
 
     model_config = {
         "env_file": ".env",
@@ -129,6 +163,11 @@ def get_settings() -> Settings:
         object.__setattr__(_settings, "encryption", EncryptionConfig())
 
         # For type checking, these need to exist
+        cel = CeleryConfig()
+        if _settings.celery_broker_url:
+            cel.broker_url = _settings.celery_broker_url
+            cel.result_backend = _settings.celery_broker_url
+        object.__setattr__(_settings, "celery", cel)
         _settings.security  # type: ignore
         _settings.database  # type: ignore
         _settings.logging  # type: ignore

@@ -30,23 +30,18 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+_broker_url = settings.celery_broker_url or "redis://localhost:6379/0"
 celery_app = Celery(
     "quantis_tasks",
-    broker=settings.celery.broker_url,
-    backend=settings.celery.result_backend,
-    include=[
-        "quantis.tasks.ml_tasks",
-        "quantis.tasks.data_tasks",
-        "quantis.tasks.notification_tasks",
-    ],
+    broker=_broker_url,
+    backend=_broker_url,
 )
 celery_app.conf.update(
-    task_serializer=settings.celery.task_serializer,
-    result_serializer=settings.celery.result_serializer,
-    accept_content=settings.celery.accept_content,
-    timezone=settings.celery.timezone,
-    enable_utc=settings.celery.enable_utc,
-    task_routes=settings.celery.task_routes,
+    task_serializer="json",
+    result_serializer="json",
+    accept_content=["json"],
+    timezone="UTC",
+    enable_utc=True,
     task_annotations={"*": {"rate_limit": "10/s"}},
     worker_prefetch_multiplier=1,
     task_acks_late=True,

@@ -12,13 +12,14 @@ import redis.asyncio as redis
 from cryptography.fernet import Fernet
 from fastapi import Depends
 from redis.asyncio import Redis
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from .config import get_settings
 from .models import (
+    AuditLog,
     Base,
     ConsentRecord,
     DataMaskingConfig,
@@ -28,17 +29,23 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-database_url = settings.database.get_database_url("postgresql")
-engine = create_engine(
-    database_url,
-    echo=settings.logging.log_level == "DEBUG",
-    poolclass=QueuePool,
-    pool_size=settings.database.pool_size,
-    max_overflow=settings.database.max_overflow,
-    pool_timeout=settings.database.pool_timeout,
-    pool_recycle=settings.database.pool_recycle,
-    pool_pre_ping=True,
-)
+database_url = settings.database_url
+_is_sqlite = database_url.startswith("sqlite")
+_engine_kwargs = {
+    "echo": settings.logging.log_level == "DEBUG",
+    "pool_pre_ping": True,
+}
+if not _is_sqlite:
+    _engine_kwargs.update(
+        {
+            "poolclass": QueuePool,
+            "pool_size": settings.database.pool_size,
+            "max_overflow": settings.database.max_overflow,
+            "pool_timeout": settings.database.pool_timeout,
+            "pool_recycle": settings.database.pool_recycle,
+        }
+    )
+engine = create_engine(database_url, **_engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 redis_client: Optional[Redis] = None
 _encryption_keys: Dict[str, Fernet] = {}
@@ -143,7 +150,7 @@ class DatabaseManager:
         """Check database connection health"""
         try:
             with engine.connect() as conn:
-                conn.execute("SELECT 1")
+                conn.execute(text("SELECT 1"))
             return True
         except Exception as e:
             logger.error(f"Database connection check failed: {e}")
@@ -288,7 +295,7 @@ def health_check() -> dict:
     health_status = {"database": False, "redis": False, "timestamp": None}
     try:
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         health_status["database"] = True
     except Exception as e:
         logger.error(f"Database health check failed: {e}")

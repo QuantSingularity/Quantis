@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, Header, HTTPException, Security
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
-from jose import jwt
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from ..database import SessionLocal, get_db
@@ -47,7 +47,7 @@ def decode_jwt_token(token: str) -> Any:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload
-    except jwt.PyJWTError:
+    except JWTError:
         return None
 
 
@@ -128,7 +128,7 @@ class RateLimiter:
 
     def __init__(self, requests_per_minute: int = 60) -> None:
         self.requests_per_minute = requests_per_minute
-        self.request_history = {}
+        self.request_history: Dict[Any, List[float]] = {}
 
     def __call__(self, user: dict = Depends(validate_api_key)) -> Any:
         user_id = user.get("user_id", "anonymous")
@@ -158,7 +158,7 @@ class IPRateLimiter:
 
     def __init__(self, requests_per_minute: int = 30) -> None:
         self.requests_per_minute = requests_per_minute
-        self.request_history = {}
+        self.request_history: Dict[str, List[float]] = {}
 
     def __call__(self, request: Any) -> Any:
         client_ip = request.client.host
