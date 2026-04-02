@@ -318,7 +318,7 @@ def process_dataset_task(
                 try:
                     pd.to_datetime(data[col].dropna().head(100))
                     date_columns.append(col)
-                except:
+                except Exception:
                     pass
         if date_columns:
             date_col = date_columns[0]

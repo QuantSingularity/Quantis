@@ -9,8 +9,6 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-
-# ✅ FIXED — correct imports for middleware functions
 from ..middleware.auth import (
     admin_required,
     prediction_rate_limit,
@@ -18,18 +16,9 @@ from ..middleware.auth import (
     user_or_admin_required,
     validate_api_key,
 )
-
-# ✅ FIXED — correct imports for schemas
 from ..schemas import PredictionCreate, PredictionResponse
 from ..services.model_service import ModelService
-
-# ✅ FIXED — correct imports for services
 from ..services.prediction_service import PredictionService
-
-# ✅ FIXED — remove "import" keyword issue
-# (You had: `import import`)
-# Removing because it is invalid and unused.
-
 
 router = APIRouter()
 
@@ -318,7 +307,7 @@ async def check_all_models_health(
             else:
                 trained_model = model_service.load_trained_model(model.id)
                 status = "healthy" if trained_model else "unhealthy"
-        except:
+        except Exception:
             status = "unhealthy"
 
         health.append(

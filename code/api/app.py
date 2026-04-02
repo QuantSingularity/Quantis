@@ -241,7 +241,7 @@ async def health_check_endpoint(db=Depends(get_db)):
         try:
             redis_client = await get_redis()
             await redis_client.ping()
-        except:
+        except Exception:
             redis_status = "error"
         return {
             "status": "ok",
