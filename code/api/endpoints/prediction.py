@@ -4,7 +4,8 @@ Prediction endpoints with database integration
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import numpy as np
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -55,6 +56,11 @@ class PredictionStats(BaseModel):
     predictions_by_day: dict
 
 
+class ModelHealthResponse(BaseModel):
+    status: str
+    version: str
+
+
 # Prediction endpoints
 @router.post("/predict", response_model=PredictionResponse)
 async def predict(
@@ -67,42 +73,12 @@ async def predict(
     try:
         prediction_service = PredictionService(db)
 
-        # Extract model_id from request or default to 1
         model_id = getattr(request, "model_id", 1)
 
         prediction = prediction_service.create_prediction(
             user_id=current_user["user_id"],
             model_id=model_id,
             input_data=request.features,
-        )
-
-        return PredictionResponse(
-            prediction=prediction.prediction_result,
-            confidence=prediction.confidence_score,
-        )
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
-
-
-@router.post("/predict/{model_id}", response_model=PredictionResponse)
-async def predict_with_model(
-    model_id: int,
-    features: List[float],
-    current_user: dict = Depends(user_or_admin_required),
-    _: dict = Depends(prediction_rate_limit),
-    db: Session = Depends(get_db),
-):
-    """Generate prediction using a specific model."""
-    try:
-        prediction_service = PredictionService(db)
-
-        prediction = prediction_service.create_prediction(
-            user_id=current_user["user_id"],
-            model_id=model_id,
-            input_data=features,
         )
 
         return PredictionResponse(
@@ -160,6 +136,35 @@ async def batch_predict(
         )
 
 
+@router.post("/predict/{model_id}", response_model=PredictionResponse)
+async def predict_with_model(
+    model_id: int,
+    features: List[float] = Body(...),
+    current_user: dict = Depends(user_or_admin_required),
+    _: dict = Depends(prediction_rate_limit),
+    db: Session = Depends(get_db),
+):
+    """Generate prediction using a specific model."""
+    try:
+        prediction_service = PredictionService(db)
+
+        prediction = prediction_service.create_prediction(
+            user_id=current_user["user_id"],
+            model_id=model_id,
+            input_data=features,
+        )
+
+        return PredictionResponse(
+            prediction=prediction.prediction_result,
+            confidence=prediction.confidence_score,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
+
 @router.get("/predictions/history", response_model=List[PredictionHistory])
 async def get_prediction_history(
     skip: int = Query(0, ge=0),
@@ -179,7 +184,6 @@ async def get_prediction_history(
             current_user["user_id"], skip, limit
         )
 
-    # Cache model names
     model_names = {}
     for pred in predictions:
         if pred.model_id not in model_names:
@@ -235,7 +239,6 @@ async def get_prediction(
     if not prediction:
         raise HTTPException(status_code=404, detail="Prediction not found")
 
-    # Enforce access
     if (
         current_user["role"] != "admin"
         and prediction.user_id != current_user["user_id"]
@@ -258,7 +261,7 @@ async def get_prediction(
 
 
 # Model health endpoints
-@router.get("/models/{model_id}/health")
+@router.get("/models/{model_id}/health", response_model=ModelHealthResponse)
 async def check_model_health(
     model_id: int,
     current_user: dict = Depends(readonly_or_above),
@@ -278,9 +281,6 @@ async def check_model_health(
         trained_model = model_service.load_trained_model(model_id)
         if not trained_model:
             return ModelHealthResponse(status="unhealthy", version="N/A")
-
-        # Run a simple test input
-        import numpy as np
 
         test = np.random.rand(10).tolist()
         trained_model.predict([test])
