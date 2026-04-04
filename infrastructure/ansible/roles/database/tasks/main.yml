@@ -1,5 +1,4 @@
 ---
-# roles/database/tasks/main.yml
 - name: Install database packages
   yum:
     name:
@@ -12,6 +11,9 @@
   template:
     src: my.cnf.j2
     dest: /etc/my.cnf.d/server.cnf
+    owner: root
+    group: root
+    mode: "0644"
   notify: Restart MariaDB
 
 - name: Start and enable MariaDB
@@ -20,23 +22,51 @@
     state: started
     enabled: yes
 
+- name: Wait for MariaDB to be ready
+  wait_for:
+    port: 3306
+    host: localhost
+    delay: 5
+    timeout: 30
+
 - name: Set root password
-  mysql_user:
+  community.mysql.mysql_user:
     name: root
     password: "{{ db_root_password }}"
     host_all: yes
+    login_unix_socket: /var/lib/mysql/mysql.sock
     state: present
   no_log: true
 
+- name: Remove anonymous users
+  community.mysql.mysql_user:
+    name: ""
+    host_all: yes
+    login_user: root
+    login_password: "{{ db_root_password }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    state: absent
+  no_log: true
+
+- name: Remove test database
+  community.mysql.mysql_db:
+    name: test
+    login_user: root
+    login_password: "{{ db_root_password }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    state: absent
+  no_log: true
+
 - name: Create application database
-  mysql_db:
+  community.mysql.mysql_db:
     name: "{{ db_name }}"
     state: present
     login_user: root
     login_password: "{{ db_root_password }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
 
 - name: Create application database user
-  mysql_user:
+  community.mysql.mysql_user:
     name: "{{ db_user }}"
     password: "{{ db_password }}"
     priv: "{{ db_name }}.*:ALL"
@@ -44,4 +74,5 @@
     state: present
     login_user: root
     login_password: "{{ db_root_password }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
   no_log: true

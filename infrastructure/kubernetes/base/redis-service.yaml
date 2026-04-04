@@ -1,20 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  # name: {{ .Values.appName }}-redis
-  name: quantis-redis # Placeholder name
+  name: quantis-redis
   labels:
-    # app: {{ .Values.appName }}-redis
-    app: quantis-redis # Placeholder label
+    app: quantis-redis
 spec:
   type: ClusterIP
   ports:
-    # - port: {{ .Values.redis.servicePort }}
-    - port: 6379 # Placeholder port
-      # targetPort: {{ .Values.redis.containerPort }}
-      targetPort: 6379 # Placeholder targetPort
+    - port: 6379
+      targetPort: 6379
       protocol: TCP
       name: redis
   selector:
-    # app: {{ .Values.appName }}-redis
-    app: quantis-redis # Placeholder selector app label
+    app: quantis-redis

@@ -1,0 +1,13 @@
+---
+# Application settings
+app_name: quantis
+app_port: 3000
+
+# Database settings - override via --extra-vars or ansible-vault
+db_name: quantisdb
+db_user: appuser
+db_password: "{{ vault_db_password }}"
+db_root_password: "{{ vault_db_root_password }}"
+
+# Web server settings
+server_name: "{{ inventory_hostname }}"

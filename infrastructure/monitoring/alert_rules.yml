@@ -1,0 +1,56 @@
+groups:
+  - name: quantis_alerts
+    rules:
+      - alert: HighDataDrift
+        expr: data_drift > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High data drift detected"
+          description: "KL divergence is {{ $value }}, exceeding threshold of 0.5"
+
+      - alert: CriticalDataDrift
+        expr: data_drift > 1.0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical data drift detected"
+          description: "KL divergence is {{ $value }}, exceeding critical threshold of 1.0"
+
+      - alert: HighConceptDrift
+        expr: concept_drift > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model performance degradation detected"
+          description: "Concept drift is {{ $value }}"
+
+      - alert: HighPredictionLatency
+        expr: histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m])) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High prediction latency"
+          description: "95th percentile latency is {{ $value }}s"
+
+      - alert: APIDown
+        expr: up{job="model_metrics"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API service is down"
+          description: "The model API has been down for more than 1 minute"
+
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container memory usage is high"
+          description: "Container {{ $labels.name }} memory usage is above 90%"

@@ -49,22 +49,26 @@ spec:
           livenessProbe:
             exec:
               command:
-                ["mysqladmin", "ping", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-            initialDelaySeconds: 30
+                - mysqladmin
+                - ping
+                - -u
+                - root
+                - --password=$(MYSQL_ROOT_PASSWORD)
+            initialDelaySeconds: 60
             periodSeconds: 10
+            failureThreshold: 6
           readinessProbe:
             exec:
               command:
-                [
-                  "mysql",
-                  "-u",
-                  "root",
-                  "-p${MYSQL_ROOT_PASSWORD}",
-                  "-e",
-                  "SELECT 1",
-                ]
-            initialDelaySeconds: 5
-            periodSeconds: 5
+                - mysql
+                - -u
+                - root
+                - --password=$(MYSQL_ROOT_PASSWORD)
+                - -e
+                - SELECT 1
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
   volumeClaimTemplates:
     - metadata:
         name: quantis-database-data

@@ -7,11 +7,16 @@ variable "aws_region" {
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
+  }
 }
 
 variable "app_name" {
   description = "Application name"
   type        = string
+  default     = "quantis"
 }
 
 variable "vpc_cidr" {
@@ -45,7 +50,7 @@ variable "instance_type" {
 }
 
 variable "key_name" {
-  description = "SSH key name"
+  description = "SSH key pair name for EC2 instances (null disables SSH access)"
   type        = string
   default     = null
 }
@@ -59,25 +64,33 @@ variable "db_instance_class" {
 variable "db_name" {
   description = "Database name"
   type        = string
+  default     = "quantis"
 }
 
 variable "db_username" {
-  description = "Database username"
+  description = "Database master username"
   type        = string
   sensitive   = true
 }
 
 variable "db_password" {
-  description = "Database password"
+  description = "Database master password - use AWS Secrets Manager or TF_VAR_db_password env var"
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = length(var.db_password) >= 16
+    error_message = "Database password must be at least 16 characters."
+  }
 }
 
 variable "default_tags" {
-  description = "Default tags for all resources"
+  description = "Default tags applied to all resources"
   type        = map(string)
   default = {
     Terraform   = "true"
     Environment = "dev"
+    Project     = "quantis"
+    ManagedBy   = "terraform"
   }
 }

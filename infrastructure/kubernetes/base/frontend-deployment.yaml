@@ -31,18 +31,20 @@ spec:
             - name: REACT_APP_API_URL
               value: /api
             - name: REACT_APP_ENV
-              value: dev
+              value: production
           livenessProbe:
             httpGet:
               path: /
               port: 80
             initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /
               port: 80
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
+            failureThreshold: 3
       imagePullSecrets:
         - name: regcred

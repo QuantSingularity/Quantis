@@ -29,7 +29,7 @@ spec:
               memory: 256Mi
           env:
             - name: NODE_ENV
-              value: dev
+              value: production
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -40,17 +40,34 @@ spec:
                 secretKeyRef:
                   name: quantis-secrets
                   key: jwt-secret
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: quantis-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: quantis-config
+                  key: REDIS_PORT
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: quantis-config
+                  key: LOG_LEVEL
           livenessProbe:
             httpGet:
               path: /health
               port: 3000
             initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health
               port: 3000
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
+            failureThreshold: 3
       imagePullSecrets:
         - name: regcred

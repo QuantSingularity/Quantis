@@ -16,8 +16,16 @@ spec:
     spec:
       containers:
         - name: quantis-redis
-          image: redis:6.2
+          image: redis:7.2-alpine
           imagePullPolicy: IfNotPresent
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - "256mb"
+            - --maxmemory-policy
+            - allkeys-lru
           ports:
             - containerPort: 6379
           resources:
@@ -29,14 +37,20 @@ spec:
               memory: 256Mi
           livenessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command:
+                - redis-cli
+                - ping
             initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             exec:
-              command: ["redis-cli", "ping"]
-            initialDelaySeconds: 5
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
             periodSeconds: 5
+            failureThreshold: 3
           volumeMounts:
             - name: quantis-redis-data
               mountPath: /data

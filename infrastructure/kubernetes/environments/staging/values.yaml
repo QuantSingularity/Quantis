@@ -1,7 +1,6 @@
 appName: quantis
 environment: staging
 
-# Backend configuration
 backend:
   replicas: 3
   image:
@@ -17,11 +16,8 @@ backend:
     requests:
       cpu: 500m
       memory: 512Mi
-  apiUrl: http://app-backend
-  jwtSecret: staging-jwt-secret
-  apiKey: staging-api-key
+  apiUrl: http://quantis-backend
 
-# Frontend configuration
 frontend:
   replicas: 3
   image:
@@ -41,20 +37,16 @@ frontend:
       cpu: 200m
       memory: 256Mi
 
-# Database configuration
 database:
   replicas: 1
   image:
     repository: mysql
-    tag: 8.0
+    tag: "8.0"
     pullPolicy: IfNotPresent
   containerPort: 3306
   servicePort: 3306
   name: quantisdb
   user: appuser
-  password: staging-password
-  rootPassword: staging-root-password
-  url: mysql://appuser:staging-password@app-database:3306/appdb
   storageClass: standard
   storage: 20Gi
   resources:
@@ -65,12 +57,11 @@ database:
       cpu: 1000m
       memory: 1Gi
 
-# Redis configuration
 redis:
   replicas: 2
   image:
     repository: redis
-    tag: 6.2
+    tag: "7.2-alpine"
     pullPolicy: IfNotPresent
   containerPort: 6379
   servicePort: 6379
@@ -84,7 +75,6 @@ redis:
       cpu: 200m
       memory: 512Mi
 
-# Ingress configuration
 ingress:
   host: staging.quantis.example.com
   class: nginx
@@ -92,6 +82,5 @@ ingress:
   certManager:
     issuer: letsencrypt-staging
 
-# General configuration
 logLevel: info
 imagePullSecrets: regcred

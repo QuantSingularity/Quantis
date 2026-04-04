@@ -1,7 +1,6 @@
 appName: quantis
 environment: prod
 
-# Backend configuration
 backend:
   replicas: 5
   image:
@@ -17,11 +16,8 @@ backend:
     requests:
       cpu: 1000m
       memory: 1Gi
-  apiUrl: http://app-backend
-  jwtSecret: prod-jwt-secret
-  apiKey: prod-api-key
+  apiUrl: http://quantis-backend
 
-# Frontend configuration
 frontend:
   replicas: 5
   image:
@@ -41,20 +37,16 @@ frontend:
       cpu: 500m
       memory: 512Mi
 
-# Database configuration
 database:
   replicas: 3
   image:
     repository: mysql
-    tag: 8.0
+    tag: "8.0"
     pullPolicy: IfNotPresent
   containerPort: 3306
   servicePort: 3306
   name: quantisdb
   user: appuser
-  password: prod-password
-  rootPassword: prod-root-password
-  url: mysql://appuser:prod-password@app-database:3306/appdb
   storageClass: premium-rwo
   storage: 50Gi
   resources:
@@ -65,12 +57,11 @@ database:
       cpu: 2000m
       memory: 4Gi
 
-# Redis configuration
 redis:
   replicas: 3
   image:
     repository: redis
-    tag: 6.2
+    tag: "7.2-alpine"
     pullPolicy: IfNotPresent
   containerPort: 6379
   servicePort: 6379
@@ -84,7 +75,6 @@ redis:
       cpu: 500m
       memory: 1Gi
 
-# Ingress configuration
 ingress:
   host: quantis.example.com
   class: nginx
@@ -92,6 +82,5 @@ ingress:
   certManager:
     issuer: letsencrypt-prod
 
-# General configuration
 logLevel: warn
 imagePullSecrets: regcred

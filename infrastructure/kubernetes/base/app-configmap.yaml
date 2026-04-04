@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: quantis-config
 data:
-  API_URL: http://app-backend
+  API_URL: http://quantis-backend
   REDIS_HOST: quantis-redis
   REDIS_PORT: "6379"
   DATABASE_HOST: quantis-database

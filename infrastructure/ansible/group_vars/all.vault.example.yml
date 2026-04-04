@@ -1,0 +1,5 @@
+---
+# Encrypt this file with: ansible-vault encrypt group_vars/all.vault.yml
+# Reference in playbook with: --ask-vault-pass or --vault-password-file
+vault_db_password: "CHANGE_ME"
+vault_db_root_password: "CHANGE_ME"

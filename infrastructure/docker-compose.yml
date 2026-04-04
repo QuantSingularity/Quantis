@@ -1,5 +1,11 @@
 version: "3.8"
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   api:
     build:
@@ -8,50 +14,231 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - API_SECRET=your_api_secret_here
+      - API_SECRET=${API_SECRET:?API_SECRET is required}
       - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - DATABASE_URL=mysql+pymysql://${DB_USER:-appuser}:${DB_PASSWORD:?DB_PASSWORD is required}@db:3306/${DB_NAME:-quantisdb}
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
       - ../models:/app/models
     depends_on:
-      - mlflow
-      - prometheus
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - backend
+
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
+      - MYSQL_DATABASE=${DB_NAME:-quantisdb}
+      - MYSQL_USER=${DB_USER:-appuser}
+      - MYSQL_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "--password=${DB_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - backend
+
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - backend
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.8.0
+    image: ghcr.io/mlflow/mlflow:v2.11.3
     ports:
       - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=mysql+pymysql://${DB_USER:-appuser}:${DB_PASSWORD:?DB_PASSWORD is required}@db:3306/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
     volumes:
       - mlflow-data:/mlflow
-    command: mlflow server --host 0.0.0.0
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri mysql+pymysql://${DB_USER:-appuser}:${DB_PASSWORD}@db:3306/mlflow
+      --default-artifact-root /mlflow/artifacts
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - backend
+      - monitoring
 
   prometheus:
-    image: prom/prometheus:v2.45.0
+    image: prom/prometheus:v2.50.1
     ports:
       - "9090:9090"
     volumes:
-      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - monitoring
 
   grafana:
-    image: grafana/grafana:10.2.0
+    image: grafana/grafana:10.3.3
     ports:
       - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
     volumes:
-      - ../monitoring/grafana_dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana_provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana_provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana_dashboards:/etc/grafana/provisioning/dashboards/quantis:ro
       - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - monitoring
 
   frontend:
     build:
       context: ../frontend
       dockerfile: ../infrastructure/Dockerfile.frontend
+      args:
+        REACT_APP_API_URL: /api
+        REACT_APP_ENV: production
     ports:
       - "80:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - frontend
+      - backend
 
 volumes:
+  db-data:
+  redis-data:
   mlflow-data:
   prometheus-data:
   grafana-data:
+  alertmanager-data:
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  monitoring:
+    driver: bridge

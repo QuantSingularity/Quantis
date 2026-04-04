@@ -1,8 +1,10 @@
 ---
-# main.yml - Main playbook that includes all other playbooks
 - name: Configure web servers
   hosts: webservers
   become: true
+  gather_facts: true
+  vars_files:
+    - "{{ playbook_dir }}/../group_vars/all.yml"
   roles:
     - common
     - webserver
@@ -10,6 +12,9 @@
 - name: Configure database servers
   hosts: databases
   become: true
+  gather_facts: true
+  vars_files:
+    - "{{ playbook_dir }}/../group_vars/all.yml"
   roles:
     - common
     - database
