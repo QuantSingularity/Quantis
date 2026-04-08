@@ -560,7 +560,10 @@ def fetch_market_data_task(
     try:
         import yfinance as yf
 
-        from .models import MarketData
+        try:
+            from .models import MarketData
+        except ImportError:
+            raise ValueError("MarketData model not available")
 
         db = SessionLocal()
         try:

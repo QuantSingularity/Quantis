@@ -159,7 +159,7 @@ class SecurityManager:
         return totp.verify(otp_code)
 
     def generate_qr_code_svg(self, uri: str) -> str:
-        """Generates an SVG string for a QR code from a URI."""
+        """Generates a base64-encoded PNG for a QR code from a URI."""
         img = qrcode.make(uri)
         buffer = io.BytesIO()
         img.save(buffer, format="PNG")
@@ -179,16 +179,21 @@ class RateLimiter:
 
     async def is_allowed(
         self, key: str, limit: int, window: int, identifier: str = "default"
-    ) -> tuple[bool, Dict[str, Any]]:
+    ) -> tuple:
         """
-        Check if request is allowed based on rate limit
+        Check if request is allowed based on rate limit.
         Returns (is_allowed, info_dict)
         """
         current_time = int(time.time())
-        pipe = self.redis.pipeline()
         window_start = current_time - window
-        await pipe.zremrangebyscore(key, 0, window_start)
-        current_requests = await pipe.zcard(key)
+
+        # Use pipeline correctly: execute cleanup and count atomically
+        pipe = self.redis.pipeline()
+        pipe.zremrangebyscore(key, 0, window_start)
+        pipe.zcard(key)
+        results = await pipe.execute()
+        current_requests = results[1]
+
         if current_requests >= limit:
             oldest_request = await self.redis.zrange(key, 0, 0, withscores=True)
             if oldest_request:
@@ -205,9 +210,12 @@ class RateLimiter:
                     "retry_after": time_until_reset,
                 },
             )
-        await pipe.zadd(key, {f"{current_time}:{identifier}": current_time})
-        await pipe.expire(key, window)
-        await pipe.execute()
+
+        pipe2 = self.redis.pipeline()
+        pipe2.zadd(key, {f"{current_time}:{identifier}": current_time})
+        pipe2.expire(key, window)
+        await pipe2.execute()
+
         remaining = limit - current_requests - 1
         return (
             True,
@@ -306,7 +314,9 @@ async def get_current_user_from_token(
         )
     user = (
         db.query(User)
-        .filter(User.id == int(user_id), User.is_active, User.is_deleted == False)
+        .filter(
+            User.id == int(user_id), User.is_active == True, User.is_deleted == False
+        )
         .first()
     )
     if not user:
@@ -324,7 +334,8 @@ async def get_current_user_from_token(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="MFA code required"
             )
-        if user.mfa_secret == False:
+        # Bug fix: was `user.mfa_secret == False` which compares object to bool
+        if not user.mfa_secret:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="MFA enabled but secret not found",
@@ -348,7 +359,7 @@ async def get_current_user_from_api_key(
         db.query(ApiKey)
         .filter(
             ApiKey.key_hash == key_hash,
-            ApiKey.is_active,
+            ApiKey.is_active == True,
             ApiKey.is_deleted == False,
         )
         .first()
@@ -367,7 +378,7 @@ async def get_current_user_from_api_key(
         db.query(User)
         .filter(
             User.id == api_key_obj.user_id,
-            User.is_active,
+            User.is_active == True,
             User.is_deleted == False,
         )
         .first()
@@ -400,17 +411,26 @@ def require_permission(required_permissions: List[str]) -> Any:
         @wraps(func)
         async def wrapper(*args, **kwargs):
             current_user = None
+            # Check positional args
             for arg in args:
                 if isinstance(arg, User):
                     current_user = arg
                     break
+            # Check keyword args (FastAPI passes dependencies as kwargs)
+            if not current_user:
+                for v in kwargs.values():
+                    if isinstance(v, User):
+                        current_user = v
+                        break
             if not current_user:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Authentication required",
                 )
-            user_permissions = set(
-                [p.permission_name for p in current_user.role.permissions]
+            user_permissions = (
+                set([p.permission_name for p in current_user.role.permissions])
+                if current_user.role
+                else set()
             )
             if not all((perm in user_permissions for perm in required_permissions)):
                 raise HTTPException(
@@ -426,7 +446,8 @@ def require_permission(required_permissions: List[str]) -> Any:
 
 def require_admin(current_user: User = Depends(get_current_user)) -> Any:
     """Dependency to require admin role"""
-    if current_user.role.value != "admin":
+    role_name = current_user.role.role_name if current_user.role else ""
+    if role_name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
@@ -546,10 +567,10 @@ async def create_user_session(
     request: Request,
     max_concurrent_sessions: int = settings.security.max_concurrent_sessions,
 ) -> UserSession:
-    """Create a new user session, handling concurrent sessions and IP/User-Agent binding"""
+    """Create a new user session, handling concurrent sessions"""
     active_sessions = (
         db.query(UserSession)
-        .filter(UserSession.user_id == user.id, UserSession.is_active)
+        .filter(UserSession.user_id == user.id, UserSession.is_active == True)
         .order_by(UserSession.last_activity.asc())
         .all()
     )
@@ -572,7 +593,7 @@ async def create_user_session(
             UserSession.user_id == user.id,
             UserSession.ip_address == request.client.host,
             UserSession.user_agent == request.headers.get("user-agent"),
-            UserSession.is_active,
+            UserSession.is_active == True,
         )
         .first()
     )
@@ -627,11 +648,14 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
 
 def create_tokens(user: User) -> Token:
     """Create access and refresh tokens for a user"""
-    user_permissions = [p.permission_name for p in user.role.permissions]
+    user_permissions = []
+    if user.role and user.role.permissions:
+        user_permissions = [p.permission_name for p in user.role.permissions]
+    role_name = user.role.role_name if user.role else "user"
     access_token = security_manager.create_access_token(
         user_id=user.id,
         username=user.username,
-        role=user.role.value,
+        role=role_name,
         permissions=user_permissions,
     )
     refresh_token = security_manager.create_refresh_token(
@@ -655,7 +679,9 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[Token]:
         return None
     user = (
         db.query(User)
-        .filter(User.id == int(user_id), User.is_active, User.is_deleted == False)
+        .filter(
+            User.id == int(user_id), User.is_active == True, User.is_deleted == False
+        )
         .first()
     )
     if not user:
@@ -665,7 +691,7 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[Token]:
         .filter(
             UserSession.user_id == user.id,
             UserSession.refresh_token == refresh_token,
-            UserSession.is_active,
+            UserSession.is_active == True,
         )
         .first()
     )
@@ -683,6 +709,3 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[Token]:
 from fastapi import APIRouter
 
 router = APIRouter()
-
-# Auth endpoints would be defined here if needed
-# Currently auth functionality is provided through dependencies

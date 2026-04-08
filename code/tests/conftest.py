@@ -1,18 +1,24 @@
+"""
+Shared pytest fixtures for the Quantis test suite.
+"""
+
 from typing import Any
 
 import pytest
-from api.app import app
-from fastapi.testclient import TestClient
-from models.train_model import TemporalFusionTransformer
 
 
 @pytest.fixture
 def test_client() -> Any:
+    from api.app import app
+    from fastapi.testclient import TestClient
+
     return TestClient(app)
 
 
 @pytest.fixture
 def sample_model() -> Any:
+    from models.train_model import TemporalFusionTransformer
+
     model = TemporalFusionTransformer(input_size=128)
     return model
 
@@ -24,9 +30,7 @@ def sample_data() -> Any:
 
 @pytest.fixture
 def mock_mlflow() -> Any:
-
     class MockMLflow:
-
         def __init__(self):
             self.metrics = {}
             self.params = {}

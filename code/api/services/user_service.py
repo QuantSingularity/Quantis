@@ -19,6 +19,20 @@ class UserService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    def _get_or_create_role(self, role_name: str) -> models.Role:
+        """Get existing role or create it."""
+        role = (
+            self.db.query(models.Role)
+            .filter(models.Role.role_name == role_name)
+            .first()
+        )
+        if not role:
+            role = models.Role(role_name=role_name, description=f"{role_name} role")
+            self.db.add(role)
+            self.db.commit()
+            self.db.refresh(role)
+        return role
+
     def create_user(
         self, username: str, email: str, password: str, role: str = "user"
     ) -> models.User:
@@ -30,11 +44,12 @@ class UserService:
         )
         if existing_user:
             raise ValueError("User with this username or email already exists")
+        role_obj = self._get_or_create_role(role)
         user = models.User(
             username=username,
             email=email,
             hashed_password=pwd_context.hash(password),
-            role=role,
+            role_id=role_obj.id,
         )
         self.db.add(user)
         self.db.commit()
@@ -104,6 +119,9 @@ class UserService:
             if hasattr(user, key) and key != "id":
                 if key == "password":
                     user.hashed_password = pwd_context.hash(value)
+                elif key == "role":
+                    role_obj = self._get_or_create_role(value)
+                    user.role_id = role_obj.id
                 else:
                     setattr(user, key, value)
         user.updated_at = datetime.utcnow()
@@ -161,11 +179,12 @@ class UserService:
             return None
         api_key.last_used = datetime.utcnow()
         self.db.commit()
+        role_name = user.role.role_name if user.role else "user"
         return {
             "user_id": user.id,
             "username": user.username,
             "email": user.email,
-            "role": user.role,
+            "role": role_name,
             "api_key_id": api_key.id,
             "expires_at": (
                 api_key.expires_at.isoformat() if api_key.expires_at else None

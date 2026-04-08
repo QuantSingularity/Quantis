@@ -5,8 +5,13 @@ Monitoring and system health endpoints
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-import models
-import psutil
+try:
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    psutil = None
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import func, text
@@ -95,15 +100,34 @@ async def get_system_health(
         database_status = "unhealthy"
 
     # Get system metrics
-    disk_usage = psutil.disk_usage("/")
-    memory = psutil.virtual_memory()
-    cpu_percent = psutil.cpu_percent(interval=1)
+    if PSUTIL_AVAILABLE:
+        disk_usage = psutil.disk_usage("/")
+        memory = psutil.virtual_memory()
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        disk_info = {
+            "total": disk_usage.total,
+            "used": disk_usage.used,
+            "percent": disk_usage.percent,
+        }
+        mem_info = {
+            "total": memory.total,
+            "used": memory.used,
+            "percent": memory.percent,
+        }
+        mem_percent = memory.percent
+        disk_percent = disk_usage.percent
+    else:
+        disk_info = {"total": 0, "used": 0, "percent": 0}
+        mem_info = {"total": 0, "used": 0, "percent": 0}
+        mem_percent = 0
+        disk_percent = 0
+        cpu_percent = 0
 
     # Determine overall status
     overall_status = "healthy"
-    if database_status == "unhealthy" or memory.percent > 90 or disk_usage.percent > 90:
+    if database_status == "unhealthy" or mem_percent > 90 or disk_percent > 90:
         overall_status = "unhealthy"
-    elif memory.percent > 80 or disk_usage.percent > 80 or cpu_percent > 80:
+    elif mem_percent > 80 or disk_percent > 80 or cpu_percent > 80:
         overall_status = "warning"
 
     return SystemHealth(
@@ -111,18 +135,8 @@ async def get_system_health(
         timestamp=datetime.utcnow().isoformat(),
         database_status=database_status,
         api_status="healthy",
-        disk_usage={
-            "total": disk_usage.total,
-            "used": disk_usage.used,
-            "free": disk_usage.free,
-            "percent": disk_usage.percent,
-        },
-        memory_usage={
-            "total": memory.total,
-            "used": memory.used,
-            "available": memory.available,
-            "percent": memory.percent,
-        },
+        disk_usage=disk_info,
+        memory_usage=mem_info,
         cpu_usage=cpu_percent,
     )
 

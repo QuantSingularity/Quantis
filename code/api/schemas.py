@@ -110,6 +110,29 @@ class UserResponse(UserBase, TimestampMixin, UUIDMixin):
         None, description="List of permissions associated with the user's role"
     )
 
+    @validator("role", pre=True, always=True)
+    def extract_role_name(cls: Any, v: Any) -> Optional[str]:
+        """Extract role_name string from Role ORM object if needed."""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return v
+        # ORM Role object
+        if hasattr(v, "role_name"):
+            return v.role_name
+        return str(v)
+
+    @validator("permissions", pre=True, always=True)
+    def extract_permissions(cls: Any, v: Any, values: Any) -> Optional[List[str]]:
+        """Extract permissions list from Role ORM relationship if needed."""
+        if v is not None and isinstance(v, list) and all(isinstance(p, str) for p in v):
+            return v
+        # Try to get permissions from the role in values
+        role = values.get("role")
+        if role is not None and hasattr(role, "permissions"):
+            return [p.permission_name for p in role.permissions]
+        return v if isinstance(v, list) else []
+
     @validator("full_name", always=True)
     def compute_full_name(cls: Any, v: Any, values: Any) -> Any:
         if values.get("first_name") and values.get("last_name"):
@@ -386,7 +409,7 @@ class ModelTraining(BaseSchema):
 class PredictionBase(BaseSchema):
     """Base prediction schema"""
 
-    input_data: Dict[str, Any] = Field(..., description="Input data for prediction")
+    input_data: Any = Field(..., description="Input data for prediction (dict or list)")
     tags: Optional[List[str]] = Field([], description="Prediction tags")
     notes: Optional[str] = Field(None, description="Prediction notes")
 
@@ -401,19 +424,18 @@ class PredictionBatch(BaseSchema):
     """Schema for batch predictions"""
 
     model_id: int = Field(..., description="Model ID")
-    input_data: List[Dict[str, Any]] = Field(
-        ..., description="List of input data for predictions"
-    )
+    input_data: List[Any] = Field(..., description="List of input data for predictions")
     tags: Optional[List[str]] = Field([], description="Prediction tags")
 
 
-class PredictionResponse(PredictionBase, TimestampMixin, UUIDMixin):
+class PredictionResponse(BaseSchema, TimestampMixin, UUIDMixin):
     """Schema for prediction response"""
 
-    id: int
-    user_id: int
-    model_id: int
-    prediction_result: Dict[str, Any]
+    id: Optional[int] = None
+    user_id: Optional[int] = None
+    model_id: Optional[int] = None
+    input_data: Optional[Any] = None
+    prediction_result: Any = Field(..., description="Prediction output (list or dict)")
     confidence_score: Optional[float] = None
     prediction_interval: Optional[Dict[str, float]] = None
     feature_importance: Optional[Dict[str, float]] = None
@@ -422,7 +444,9 @@ class PredictionResponse(PredictionBase, TimestampMixin, UUIDMixin):
     api_version: Optional[str] = None
     actual_value: Optional[float] = None
     feedback_score: Optional[float] = None
-    is_validated: bool
+    is_validated: bool = False
+    tags: Optional[List[str]] = Field([], description="Prediction tags")
+    notes: Optional[str] = None
 
 
 class PredictionFeedback(BaseSchema):

@@ -1,26 +1,29 @@
+"""
+Tests for AWS infrastructure utilities and metrics collection.
+"""
+
 from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
 from models.aws_deploy import deploy_to_aws
-
 from monitoring.metrics_collector import MetricsCollector
 
 
 @pytest.fixture
 def mock_s3() -> Any:
-    with patch("boto3.client") as mock:
-        mock_s3 = Mock()
-        mock.return_value = mock_s3
-        yield mock_s3
+    with patch("boto3.client") as mock_client:
+        mock_s3_instance = Mock()
+        mock_client.return_value = mock_s3_instance
+        yield mock_s3_instance
 
 
 @pytest.fixture
 def mock_cloudwatch() -> Any:
-    with patch("boto3.client") as mock:
-        mock_cloudwatch = Mock()
-        mock.return_value = mock_cloudwatch
-        yield mock_cloudwatch
+    with patch("boto3.client") as mock_client:
+        mock_cw_instance = Mock()
+        mock_client.return_value = mock_cw_instance
+        yield mock_cw_instance
 
 
 def test_aws_deployment(mock_s3: Any) -> Any:

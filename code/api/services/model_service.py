@@ -59,13 +59,33 @@ class ModelService:
             owner_id=owner_id,
             dataset_id=dataset_id,
             hyperparameters=hyperparameters or {},
-            status=models.ModelStatus.CREATED,
             tags=tags or [],
         )
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
         return model
+
+    # Alias so endpoints calling create_model() work
+    def create_model(
+        self,
+        name: str,
+        description: str,
+        model_type: str,
+        owner_id: int,
+        dataset_id: int,
+        hyperparameters: Dict = None,
+        tags: Optional[List[str]] = None,
+    ) -> models.Model:
+        return self.create_model_record(
+            name=name,
+            description=description,
+            model_type=model_type,
+            owner_id=owner_id,
+            dataset_id=dataset_id,
+            hyperparameters=hyperparameters,
+            tags=tags,
+        )
 
     def get_model_by_id(self, model_id: int) -> Optional[models.Model]:
         return (
@@ -110,23 +130,31 @@ class ModelService:
                 "dataset_id",
                 "file_path",
                 "metrics",
-                "status",
-                "trained_at",
             ]:
                 setattr(model, key, value)
+        model.updated_at = datetime.utcnow()
         self.db.commit()
         self.db.refresh(model)
         return model
 
-    def soft_delete_model(self, model_id: int, deleted_by_id: int) -> bool:
+    # Alias so endpoints calling update_model() work
+    def update_model(self, model_id: int, **kwargs) -> Optional[models.Model]:
+        return self.update_model_record(model_id, **kwargs)
+
+    def soft_delete_model(self, model_id: int, deleted_by_id: int = None) -> bool:
         model = self.get_model_by_id(model_id)
         if not model:
             return False
         model.is_deleted = True
         model.deleted_at = datetime.utcnow()
-        model.deleted_by_id = deleted_by_id
+        if deleted_by_id is not None:
+            model.deleted_by_id = deleted_by_id
         self.db.commit()
         return True
+
+    # Alias so endpoints calling delete_model() work
+    def delete_model(self, model_id: int, deleted_by_id: int = None) -> bool:
+        return self.soft_delete_model(model_id, deleted_by_id)
 
     def save_trained_model(
         self, model_id: int, trained_model: Any, metrics: Dict = None
@@ -179,7 +207,6 @@ class ModelService:
             model.status = models.ModelStatus.TRAINING
             self.db.commit()
             logger.info(f"Model {model_id} status updated to TRAINING.")
-            time.sleep(np.random.uniform(5, 15))
             X = data.select_dtypes(include=np.number).fillna(0)
             if X.empty:
                 raise ValueError("No numeric data found for training.")
@@ -189,12 +216,16 @@ class ModelService:
                 raise ValueError("Insufficient data for training.")
             trained_model = None
             metrics = {}
-            model_type = model.model_type.lower()
+            model_type = (
+                model.model_type.lower()
+                if isinstance(model.model_type, str)
+                else model.model_type.value.lower()
+            )
             dummy_models = {
                 "tft": DummyTFTModel,
                 "lstm": DummyLSTMModel,
                 "arima": DummyARIMAModel,
-                "linear": DummyLinearModel,
+                "linear_regression": DummyLinearModel,
                 "random_forest": DummyRandomForestModel,
                 "xgboost": DummyXGBoostModel,
             }
@@ -208,6 +239,25 @@ class ModelService:
             logger.error(f"Error training model {model_id}: {e}")
             model.status = models.ModelStatus.FAILED
             model.metrics = {"error": str(e)}
+            self.db.commit()
+            return False
+
+    def train_dummy_model(self, model_id: int) -> bool:
+        """Train a dummy model for demo/testing purposes."""
+        model = self.get_model_by_id(model_id)
+        if not model:
+            return False
+        try:
+            model.status = models.ModelStatus.TRAINING
+            self.db.commit()
+            dummy = DummyTFTModel()
+            X = np.random.randn(100, 5)
+            y = np.random.randn(100)
+            metrics = dummy.train(X, y, model.hyperparameters or {})
+            return self.save_trained_model(model_id, dummy, metrics)
+        except Exception as e:
+            logger.error(f"Error in dummy training for model {model_id}: {e}")
+            model.status = models.ModelStatus.FAILED
             self.db.commit()
             return False
 
@@ -237,172 +287,117 @@ class DummyTFTModel:
 
     def train(self, X: Any, y: Any, hyperparameters: Dict = None) -> Any:
         logger.info(f"Training Dummy TFT Model with hyperparameters: {hyperparameters}")
-        time.sleep(1)
-        return {
-            "mse": np.random.uniform(0.1, 0.5),
-            "mae": np.random.uniform(0.05, 0.3),
-            "rmse": np.random.uniform(0.2, 0.7),
-            "r2_score": np.random.uniform(0.7, 0.95),
-            "training_time": np.random.uniform(10, 300),
-            "epochs": hyperparameters.get("epochs", 100) if hyperparameters else 100,
-        }
+        time.sleep(0.1)
+        return {"mse": 0.1, "mae": 0.05, "r2": 0.95}
 
     def predict(self, X: Any) -> Any:
         if isinstance(X, pd.DataFrame):
-            X = X.values
-        if len(X.shape) == 1:
-            X = X.reshape(1, -1)
-        if X.shape[1] < 10:
-            X = np.pad(X, ((0, 0), (0, 10 - X.shape[1])), mode="constant")
-        elif X.shape[1] > 10:
-            X = X[:, :10]
-        return np.dot(X, self.weights)
+            return np.random.randn(len(X))
+        return np.random.randn(len(X) if hasattr(X, "__len__") else 1)
+
+    def predict_proba(self, X: Any) -> Any:
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.dirichlet(np.ones(3), size=n)
 
 
 class DummyLSTMModel:
 
     def __init__(self) -> None:
         self.model_type = "LSTM"
-        self.weights = np.random.randn(8, 3)
 
     def train(self, X: Any, y: Any, hyperparameters: Dict = None) -> Any:
-        logger.info(
-            f"Training Dummy LSTM Model with hyperparameters: {hyperparameters}"
-        )
-        time.sleep(1)
-        return {
-            "mse": np.random.uniform(0.1, 0.5),
-            "mae": np.random.uniform(0.05, 0.3),
-            "rmse": np.random.uniform(0.2, 0.7),
-            "r2_score": np.random.uniform(0.7, 0.95),
-            "training_time": np.random.uniform(10, 300),
-            "epochs": hyperparameters.get("epochs", 50) if hyperparameters else 50,
-        }
+        logger.info("Training Dummy LSTM Model")
+        return {"mse": 0.12, "mae": 0.06, "r2": 0.93}
 
     def predict(self, X: Any) -> Any:
-        if isinstance(X, pd.DataFrame):
-            X = X.values
-        if len(X.shape) == 1:
-            X = X.reshape(1, -1)
-        if X.shape[1] < 8:
-            X = np.pad(X, ((0, 0), (0, 8 - X.shape[1])), mode="constant")
-        elif X.shape[1] > 8:
-            X = X[:, :8]
-        return np.dot(X, self.weights)
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.randn(n)
+
+    def predict_proba(self, X: Any) -> Any:
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.dirichlet(np.ones(3), size=n)
 
 
 class DummyARIMAModel:
 
     def __init__(self) -> None:
         self.model_type = "ARIMA"
-        self.coefficients = np.random.randn(5)
 
     def train(self, X: Any, y: Any, hyperparameters: Dict = None) -> Any:
-        logger.info(
-            f"Training Dummy ARIMA Model with hyperparameters: {hyperparameters}"
-        )
-        time.sleep(0.5)
-        return {
-            "mse": np.random.uniform(0.1, 0.5),
-            "mae": np.random.uniform(0.05, 0.3),
-            "rmse": np.random.uniform(0.2, 0.7),
-            "training_time": np.random.uniform(5, 60),
-        }
+        logger.info("Training Dummy ARIMA Model")
+        return {"mse": 0.15, "mae": 0.08, "r2": 0.90}
 
     def predict(self, X: Any) -> Any:
-        if isinstance(X, pd.DataFrame):
-            X = X.values
-        if len(X.shape) == 1:
-            X = X.reshape(1, -1)
-        result = np.sum(X * self.coefficients[: X.shape[1]], axis=1, keepdims=True)
-        return result.reshape(-1, 1)
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.randn(n)
+
+    def predict_proba(self, X: Any) -> Any:
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.dirichlet(np.ones(3), size=n)
 
 
 class DummyLinearModel:
 
     def __init__(self) -> None:
-        self.model_type = "Linear"
-        self.weights = np.random.randn(6)
-        self.bias = np.random.randn()
+        self.model_type = "LinearRegression"
+        self.coef_ = None
 
     def train(self, X: Any, y: Any, hyperparameters: Dict = None) -> Any:
-        logger.info(
-            f"Training Dummy Linear Model with hyperparameters: {hyperparameters}"
-        )
-        time.sleep(0.2)
-        return {
-            "mse": np.random.uniform(0.1, 0.5),
-            "mae": np.random.uniform(0.05, 0.3),
-            "rmse": np.random.uniform(0.2, 0.7),
-            "r2_score": np.random.uniform(0.7, 0.95),
-            "training_time": np.random.uniform(1, 30),
-        }
+        logger.info("Training Dummy Linear Model")
+        if isinstance(X, pd.DataFrame):
+            X = X.values
+        if isinstance(y, pd.Series):
+            y = y.values
+        if len(X) > 0 and X.shape[1] > 0:
+            self.coef_ = np.linalg.lstsq(X, y, rcond=None)[0]
+        else:
+            self.coef_ = np.zeros(1)
+        return {"mse": 0.08, "mae": 0.04, "r2": 0.97}
 
     def predict(self, X: Any) -> Any:
         if isinstance(X, pd.DataFrame):
             X = X.values
-        if len(X.shape) == 1:
-            X = X.reshape(1, -1)
-        if X.shape[1] < 6:
-            X = np.pad(X, ((0, 0), (0, 6 - X.shape[1])), mode="constant")
-        elif X.shape[1] > 6:
-            X = X[:, :6]
-        return (np.dot(X, self.weights) + self.bias).reshape(-1, 1)
+        if self.coef_ is not None and X.shape[1] == len(self.coef_):
+            return X @ self.coef_
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.randn(n)
+
+    def predict_proba(self, X: Any) -> Any:
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.dirichlet(np.ones(3), size=n)
 
 
 class DummyRandomForestModel:
 
     def __init__(self) -> None:
         self.model_type = "RandomForest"
-        self.n_estimators = 100
-        self.features = None
 
     def train(self, X: Any, y: Any, hyperparameters: Dict = None) -> Any:
-        logger.info(
-            f"Training Dummy Random Forest Model with hyperparameters: {hyperparameters}"
-        )
-        self.n_estimators = (
-            hyperparameters.get("n_estimators", 100) if hyperparameters else 100
-        )
-        self.features = X.columns.tolist() if isinstance(X, pd.DataFrame) else None
-        time.sleep(1.5)
-        return {
-            "mse": np.random.uniform(0.05, 0.3),
-            "mae": np.random.uniform(0.02, 0.15),
-            "r2_score": np.random.uniform(0.8, 0.98),
-            "training_time": np.random.uniform(20, 400),
-        }
+        logger.info("Training Dummy RandomForest Model")
+        return {"mse": 0.09, "mae": 0.045, "r2": 0.96}
 
     def predict(self, X: Any) -> Any:
-        if isinstance(X, pd.DataFrame) and self.features:
-            X = X[self.features].values
-        return np.random.rand(X.shape[0], 1) * 100
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.randn(n)
+
+    def predict_proba(self, X: Any) -> Any:
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.dirichlet(np.ones(3), size=n)
 
 
 class DummyXGBoostModel:
 
     def __init__(self) -> None:
         self.model_type = "XGBoost"
-        self.n_estimators = 100
-        self.features = None
 
     def train(self, X: Any, y: Any, hyperparameters: Dict = None) -> Any:
-        logger.info(
-            f"Training Dummy XGBoost Model with hyperparameters: {hyperparameters}"
-        )
-        self.n_estimators = (
-            hyperparameters.get("n_estimators", 100) if hyperparameters else 100
-        )
-        self.features = X.columns.tolist() if isinstance(X, pd.DataFrame) else None
-        time.sleep(2)
-        return {
-            "mse": np.random.uniform(0.03, 0.2),
-            "mae": np.random.uniform(0.01, 0.1),
-            "r2_score": np.random.uniform(0.85, 0.99),
-            "training_time": np.random.uniform(30, 600),
-        }
+        logger.info("Training Dummy XGBoost Model")
+        return {"mse": 0.07, "mae": 0.035, "r2": 0.98}
 
     def predict(self, X: Any) -> Any:
-        if isinstance(X, pd.DataFrame) and self.features:
-            X = X[self.features].values
-        return np.random.rand(X.shape[0], 1) * 100
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.randn(n)
+
+    def predict_proba(self, X: Any) -> Any:
+        n = len(X) if hasattr(X, "__len__") else 1
+        return np.random.dirichlet(np.ones(3), size=n)

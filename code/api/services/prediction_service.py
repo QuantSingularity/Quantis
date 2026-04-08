@@ -32,7 +32,13 @@ class PredictionService:
         model = self.model_service.get_model_by_id(model_id)
         if not model:
             raise ValueError("Model not found")
-        if model.status != models.ModelStatus.TRAINED:
+        model_status = model.status
+        if hasattr(model_status, "value"):
+            model_status = model_status.value
+        if (
+            model_status != models.ModelStatus.TRAINED
+            and model_status != models.ModelStatus.TRAINED.value
+        ):
             raise ValueError("Model is not trained yet")
         try:
             start_time = time.time()

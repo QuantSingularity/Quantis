@@ -30,7 +30,7 @@ class Roles:
     READONLY = "readonly"
 
 
-def create_jwt_token(data: dict, expires_delta: Optional[timedelta] = None) -> Any:
+def create_jwt_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT token with expiration."""
     to_encode = data.copy()
     if expires_delta:
@@ -38,12 +38,11 @@ def create_jwt_token(data: dict, expires_delta: Optional[timedelta] = None) -> A
     else:
         expire = datetime.utcnow() + timedelta(minutes=JWT_EXPIRATION_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def decode_jwt_token(token: str) -> Any:
-    """Decode and validate JWT token."""
+def decode_jwt_token(token: str) -> Optional[dict]:
+    """Decode and validate JWT token. Returns None on any error."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload
@@ -89,11 +88,12 @@ async def validate_jwt_token(
             detail="User not found or inactive",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    role_name = user.role.role_name if user.role else "user"
     return {
         "user_id": user.id,
         "username": user.username,
         "email": user.email,
-        "role": user.role,
+        "role": role_name,
     }
 
 
@@ -101,7 +101,7 @@ async def optional_auth(
     api_key: Optional[str] = Header(None, alias="X-API-Key"),
     db: Session = Depends(get_db),
 ):
-    """Optional authentication - returns user info if authenticated, None otherwise."""
+    """Optional authentication — returns user info if authenticated, None otherwise."""
     if not api_key:
         return None
     try:
@@ -137,9 +137,7 @@ class RateLimiter:
         current_time = time.time()
         minute_ago = current_time - 60
         self.request_history[user_id] = [
-            timestamp
-            for timestamp in self.request_history[user_id]
-            if timestamp > minute_ago
+            ts for ts in self.request_history[user_id] if ts > minute_ago
         ]
         limit = (
             self.requests_per_minute * 2
@@ -167,9 +165,7 @@ class IPRateLimiter:
         current_time = time.time()
         minute_ago = current_time - 60
         self.request_history[client_ip] = [
-            timestamp
-            for timestamp in self.request_history[client_ip]
-            if timestamp > minute_ago
+            ts for ts in self.request_history[client_ip] if ts > minute_ago
         ]
         if len(self.request_history[client_ip]) >= self.requests_per_minute:
             raise HTTPException(
@@ -188,35 +184,43 @@ public_rate_limit = IPRateLimiter(30)
 
 
 class ApiKeyManager:
-    """Legacy compatibility class - now uses database backend"""
+    """Legacy compatibility class — now uses database backend."""
 
     @staticmethod
     def create_api_key(
         user_id: str, role: str = Roles.USER, expiry_days: int = 30
     ) -> str:
-        """Create a new API key - legacy compatibility method"""
+        """Create a new API key — legacy compatibility method."""
         db = SessionLocal()
         try:
             user_service = UserService(db)
-            if isinstance(user_id, str) and user_id.isdigit():
-                user_id = int(user_id)
-            return user_service.create_api_key(user_id, "Legacy Key", expiry_days)
+            uid = (
+                int(user_id)
+                if isinstance(user_id, str) and user_id.isdigit()
+                else user_id
+            )
+            return user_service.create_api_key(uid, "Legacy Key", expiry_days)
         finally:
             db.close()
 
     @staticmethod
     def validate_api_key(api_key: str) -> Dict:
-        """Validate API key - legacy compatibility method"""
+        """Validate API key — legacy compatibility method."""
         db = SessionLocal()
         try:
             user_service = UserService(db)
-            return user_service.validate_api_key(api_key)
+            result = user_service.validate_api_key(api_key)
+            if result is None:
+                raise HTTPException(
+                    status_code=403, detail="Invalid or expired API key"
+                )
+            return result
         finally:
             db.close()
 
     @staticmethod
     def revoke_api_key(api_key: str) -> bool:
-        """Revoke an API key - legacy compatibility method"""
+        """Revoke an API key — legacy compatibility method."""
         db = SessionLocal()
         try:
             user_service = UserService(db)
@@ -226,13 +230,16 @@ class ApiKeyManager:
 
     @staticmethod
     def get_user_keys(user_id: str) -> List[str]:
-        """Get all API keys for a user - legacy compatibility method"""
+        """Get all API keys for a user — legacy compatibility method."""
         db = SessionLocal()
         try:
             user_service = UserService(db)
-            if isinstance(user_id, str) and user_id.isdigit():
-                user_id = int(user_id)
-            api_keys = user_service.get_user_api_keys(user_id)
+            uid = (
+                int(user_id)
+                if isinstance(user_id, str) and user_id.isdigit()
+                else user_id
+            )
+            api_keys = user_service.get_user_api_keys(uid)
             return [f"key_{key.id}" for key in api_keys]
         finally:
             db.close()

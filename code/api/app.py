@@ -187,7 +187,7 @@ async def lifespan(app: FastAPI):
         await close_redis()
         logger.info("Redis connection closed")
     except Exception as e:
-        logger.error("Shutdown error", error=str(e))
+        logger.warning("Shutdown error (non-fatal)", error=str(e))
     logger.info("Quantis API shutdown complete")
 
 
@@ -236,11 +236,14 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 async def health_check_endpoint(db=Depends(get_db)):
     try:
         health_result = health_check()
-        db_status = "ok" if health_result["database"] else "error"
+        db_status = "ok" if health_result.get("database") else "error"
         redis_status = "ok"
         try:
             redis_client = await get_redis()
-            await redis_client.ping()
+            if redis_client is not None:
+                await redis_client.ping()
+            else:
+                redis_status = "not_configured"
         except Exception:
             redis_status = "error"
         return {

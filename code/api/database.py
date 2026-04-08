@@ -101,13 +101,17 @@ def get_db() -> Session:
         db.close()
 
 
-async def get_redis() -> Redis:
-    """Get Redis client dependency"""
+async def get_redis() -> Optional[Redis]:
+    """Get Redis client dependency. Returns None if Redis is not configured."""
     global redis_client
     if redis_client is None:
         if not settings.redis_url:
-            raise ValueError("Redis URL is not configured in settings.")
-        redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+            return None
+        try:
+            redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+        except Exception as e:
+            logger.warning(f"Redis connection failed: {e}")
+            return None
     return redis_client
 
 
@@ -300,14 +304,26 @@ def health_check() -> dict:
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
     try:
-        import asyncio
+        if settings.redis_url:
+            import asyncio
 
-        async def check_redis():
-            redis_client = await get_redis()
-            await redis_client.ping()
-            return True
+            async def check_redis():
+                rc = await get_redis()
+                if rc is not None:
+                    await rc.ping()
+                    return True
+                return False
 
-        health_status["redis"] = asyncio.run(check_redis())
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    health_status["redis"] = False  # skip in async context
+                else:
+                    health_status["redis"] = loop.run_until_complete(check_redis())
+            except RuntimeError:
+                health_status["redis"] = False
+        else:
+            health_status["redis"] = False
     except Exception as e:
         logger.error(f"Redis health check failed: {e}")
     from datetime import datetime

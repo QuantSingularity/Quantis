@@ -134,8 +134,16 @@ class AuditMixin:
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    updated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by_id = Column(
+        Integer,
+        ForeignKey("users.id", use_alter=True, name="fk_audit_created_by"),
+        nullable=True,
+    )
+    updated_by_id = Column(
+        Integer,
+        ForeignKey("users.id", use_alter=True, name="fk_audit_updated_by"),
+        nullable=True,
+    )
 
 
 class SoftDeleteMixin:
@@ -143,7 +151,11 @@ class SoftDeleteMixin:
 
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
-    deleted_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    deleted_by_id = Column(
+        Integer,
+        ForeignKey("users.id", use_alter=True, name="fk_soft_delete_deleted_by"),
+        nullable=True,
+    )
 
 
 role_permission_association = Table(
@@ -531,10 +543,18 @@ class EncryptionKey(Base, AuditMixin):
     previous_key_id = Column(Integer, ForeignKey("encryption_keys.id"), nullable=True)
     next_key_id = Column(Integer, ForeignKey("encryption_keys.id"), nullable=True)
     previous_key = relationship(
-        "EncryptionKey", remote_side=[id], uselist=False, post_update=True
+        "EncryptionKey",
+        foreign_keys=[previous_key_id],
+        remote_side=[id],
+        uselist=False,
+        post_update=True,
     )
     next_key = relationship(
-        "EncryptionKey", remote_side=[id], uselist=False, post_update=True
+        "EncryptionKey",
+        foreign_keys=[next_key_id],
+        remote_side=[id],
+        uselist=False,
+        post_update=True,
     )
 
 
@@ -569,7 +589,7 @@ class Transaction(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    user = relationship("User", foreign_keys=[user_id], back_populates="transactions")
+    user = relationship("User", foreign_keys=[user_id], backref="transactions")
     approver = relationship("User", foreign_keys=[approved_by])
     rejecter = relationship("User", foreign_keys=[rejected_by])
     __table_args__ = (
@@ -580,6 +600,5 @@ class Transaction(Base):
     )
 
 
-User.transactions = relationship(
-    "Transaction", foreign_keys="Transaction.user_id", back_populates="user"
-)
+# Transactions relationship added via mapper configuration
+# (defined as backref in Transaction.user relationship)
