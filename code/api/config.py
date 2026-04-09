@@ -2,9 +2,9 @@
 Configuration management for the Quantis API - Working version
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -128,6 +128,22 @@ class Settings(BaseSettings):
         default=[".csv", ".json", ".xlsx", ".xls", ".parquet"],
         description="Allowed upload file extensions",
     )
+
+    @field_validator(
+        "cors_origins", "allowed_hosts", "allowed_file_types", mode="before"
+    )
+    @classmethod
+    def parse_str_to_list(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                import json
+
+                return json.loads(v)
+            return [
+                item.strip() for item in v.replace(",", " ").split() if item.strip()
+            ]
+        return v
 
     @property
     def model_storage_directory(self) -> str:

@@ -96,14 +96,14 @@ def test_model_serialization_formats(sample_model: Any, tmp_path: Any) -> None:
     # Full model save/load
     torch_path = tmp_path / "model.pt"
     torch.save(sample_model, torch_path)
-    loaded_model = torch.load(torch_path)
+    loaded_model = torch.load(torch_path, weights_only=False)
     assert isinstance(loaded_model, TemporalFusionTransformer)
 
     # State-dict round-trip
     state_dict_path = tmp_path / "model_state_dict.pt"
     torch.save(sample_model.state_dict(), state_dict_path)
     new_model = TemporalFusionTransformer(input_size=128)
-    new_model.load_state_dict(torch.load(state_dict_path))
+    new_model.load_state_dict(torch.load(state_dict_path, weights_only=True))
 
     sample_model.eval()
     new_model.eval()

@@ -7,6 +7,14 @@ from typing import Any
 import pytest
 
 
+@pytest.fixture(scope="session", autouse=True)
+def init_test_database() -> None:
+    from api.database import engine
+    from api.models import Base
+
+    Base.metadata.create_all(bind=engine)
+
+
 @pytest.fixture
 def test_client() -> Any:
     from api.app import app

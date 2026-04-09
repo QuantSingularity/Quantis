@@ -18,7 +18,7 @@ def test_model_loading(tmp_path: Any) -> Any:
     torch.save(model.state_dict(), save_path)
 
     loaded = TemporalFusionTransformer(input_size=128)
-    loaded.load_state_dict(torch.load(save_path))
+    loaded.load_state_dict(torch.load(save_path, weights_only=True))
     loaded.eval()
 
     inp = torch.randn(1, 128)
@@ -57,7 +57,7 @@ def test_model_save_load(sample_model: Any, tmp_path: Any) -> Any:
     save_path = tmp_path / "test_model.pt"
     torch.save(sample_model.state_dict(), save_path)
     loaded_model = TemporalFusionTransformer(input_size=128)
-    loaded_model.load_state_dict(torch.load(save_path))
+    loaded_model.load_state_dict(torch.load(save_path, weights_only=True))
     assert isinstance(loaded_model, TemporalFusionTransformer)
     input_tensor = torch.randn(1, 128)
     sample_model.eval()

@@ -26,7 +26,14 @@ class PredictionService:
         self, user_id: int, model_id: int, input_data: List[float]
     ) -> Optional[models.Prediction]:
         """Create a new prediction"""
-        user = self.db.query(models.User).filter(models.User.id == user_id).first()
+        try:
+            numeric_user_id = int(user_id)
+        except (TypeError, ValueError):
+            raise ValueError(f"User not found (invalid user_id: {user_id!r})")
+
+        user = (
+            self.db.query(models.User).filter(models.User.id == numeric_user_id).first()
+        )
         if not user:
             raise ValueError("User not found")
         model = self.model_service.get_model_by_id(model_id)
@@ -82,9 +89,13 @@ class PredictionService:
         self, user_id: int, skip: int = 0, limit: int = 100
     ) -> List[models.Prediction]:
         """Get predictions by user"""
+        try:
+            numeric_user_id = int(user_id)
+        except (TypeError, ValueError):
+            return []
         return (
             self.db.query(models.Prediction)
-            .filter(models.Prediction.user_id == user_id)
+            .filter(models.Prediction.user_id == numeric_user_id)
             .order_by(desc(models.Prediction.created_at))
             .offset(skip)
             .limit(limit)

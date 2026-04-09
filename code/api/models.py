@@ -181,7 +181,7 @@ class Role(Base, AuditMixin):
     id = Column(Integer, primary_key=True, index=True)
     role_name = Column(String(50), unique=True, nullable=False)
     description = Column(Text)
-    users = relationship("User", back_populates="role")
+    users = relationship("User", back_populates="role", foreign_keys="[User.role_id]")
     permissions = relationship(
         "Permission", secondary=role_permission_association, back_populates="roles"
     )
@@ -207,22 +207,42 @@ class User(Base, AuditMixin, SoftDeleteMixin):
     phone_number = Column(String(20))
     timezone = Column(String(50), default="UTC")
     preferences = Column(JSON, default=dict)
-    role = relationship("Role", back_populates="users")
+    role = relationship("Role", back_populates="users", foreign_keys="[User.role_id]")
     api_keys = relationship(
-        "ApiKey", back_populates="user", cascade="all, delete-orphan"
+        "ApiKey",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="[ApiKey.user_id]",
     )
     datasets = relationship(
-        "Dataset", back_populates="owner", cascade="all, delete-orphan"
+        "Dataset",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        foreign_keys="[Dataset.owner_id]",
     )
-    models = relationship("Model", back_populates="owner", cascade="all, delete-orphan")
+    models = relationship(
+        "Model",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        foreign_keys="[Model.owner_id]",
+    )
     predictions = relationship(
-        "Prediction", back_populates="user", cascade="all, delete-orphan"
+        "Prediction",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="[Prediction.user_id]",
     )
     notifications = relationship(
-        "Notification", back_populates="user", cascade="all, delete-orphan"
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="[Notification.user_id]",
     )
     user_sessions = relationship(
-        "UserSession", back_populates="user", cascade="all, delete-orphan"
+        "UserSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="[UserSession.user_id]",
     )
     __table_args__ = (
         Index("idx_user_email_active", "email", "is_active"),
@@ -237,7 +257,7 @@ class User(Base, AuditMixin, SoftDeleteMixin):
         return pwd_context.hash(password)
 
     def is_locked(self) -> bool:
-        return self.locked_until and self.locked_until > datetime.utcnow()
+        return bool(self.locked_until and self.locked_until > datetime.utcnow())
 
     def lock_account(self, duration_minutes: int = 15) -> Any:
         self.locked_until = datetime.utcnow() + timedelta(minutes=duration_minutes)
@@ -265,7 +285,9 @@ class UserSession(Base, AuditMixin):
     ip_address = Column(String(45))
     user_agent = Column(String(500))
     last_activity = Column(DateTime(timezone=True), server_default=func.now())
-    user = relationship("User", back_populates="user_sessions")
+    user = relationship(
+        "User", back_populates="user_sessions", foreign_keys="[UserSession.user_id]"
+    )
 
     def is_expired(self) -> bool:
         return datetime.utcnow() > self.expires_at
@@ -285,7 +307,9 @@ class ApiKey(Base, AuditMixin, SoftDeleteMixin):
     rate_limit = Column(Integer, default=1000, nullable=False)
     scopes = Column(JSON, default=list)
     ip_whitelist = Column(JSON, default=list)
-    user = relationship("User", back_populates="api_keys")
+    user = relationship(
+        "User", back_populates="api_keys", foreign_keys="[ApiKey.user_id]"
+    )
 
     @staticmethod
     def generate_key() -> str:
@@ -324,7 +348,9 @@ class Dataset(Base, AuditMixin, SoftDeleteMixin):
     frequency = Column(String(20))
     start_date = Column(DateTime(timezone=True))
     end_date = Column(DateTime(timezone=True))
-    owner = relationship("User", back_populates="datasets")
+    owner = relationship(
+        "User", back_populates="datasets", foreign_keys="[Dataset.owner_id]"
+    )
     models = relationship(
         "Model", back_populates="dataset", cascade="all, delete-orphan"
     )
@@ -368,7 +394,9 @@ class Model(Base, AuditMixin, SoftDeleteMixin):
     deployed_at = Column(DateTime(timezone=True))
     tags = Column(JSON, default=list)
     notes = Column(Text)
-    owner = relationship("User", back_populates="models")
+    owner = relationship(
+        "User", back_populates="models", foreign_keys="[Model.owner_id]"
+    )
     dataset = relationship("Dataset", back_populates="models")
     predictions = relationship(
         "Prediction", back_populates="model", cascade="all, delete-orphan"
@@ -403,8 +431,12 @@ class Prediction(Base, AuditMixin):
     is_validated = Column(Boolean, default=False)
     tags = Column(JSON, default=list)
     notes = Column(Text)
-    user = relationship("User", back_populates="predictions")
-    model = relationship("Model", back_populates="predictions")
+    user = relationship(
+        "User", back_populates="predictions", foreign_keys="[Prediction.user_id]"
+    )
+    model = relationship(
+        "Model", back_populates="predictions", foreign_keys="[Prediction.model_id]"
+    )
     __table_args__ = (
         Index("idx_prediction_user_model", "user_id", "model_id"),
         Index("idx_prediction_created_at", "created_at"),
@@ -446,7 +478,9 @@ class Notification(Base, AuditMixin):
     priority = Column(String(20), default="normal")
     category = Column(String(50))
     data = Column(JSON, default=dict)
-    user = relationship("User", back_populates="notifications")
+    user = relationship(
+        "User", back_populates="notifications", foreign_keys="[Notification.user_id]"
+    )
     __table_args__ = (
         Index("idx_notification_user_read", "user_id", "is_read"),
         Index("idx_notification_type_sent", "notification_type", "is_sent"),
@@ -488,7 +522,7 @@ class AuditLog(Base):
     method = Column(String(10))
     status_code = Column(Integer)
     details = Column(JSON)
-    user = relationship("User")
+    user = relationship("User", foreign_keys="[AuditLog.user_id]")
     __table_args__ = (
         Index("idx_audit_log_user_id", "user_id"),
         Index("idx_audit_log_action", "action"),
@@ -515,7 +549,7 @@ class ConsentRecord(Base, AuditMixin):
     )
     is_active = Column(Boolean, default=True, nullable=False)
     details = Column(JSON)
-    user = relationship("User")
+    user = relationship("User", foreign_keys="[ConsentRecord.user_id]")
     __table_args__ = (
         UniqueConstraint("user_id", "consent_type", name="uq_user_consent_type"),
         Index("idx_consent_user_id", "user_id"),

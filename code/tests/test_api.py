@@ -19,11 +19,13 @@ def test_predict_endpoint_success(
     assert response.status_code in (200, 400, 401, 403, 404, 422)
 
 
-def test_predict_endpoint_invalid_data(test_client: Any) -> Any:
+def test_predict_endpoint_invalid_data(test_client: Any, monkeypatch) -> Any:
     """Submitting wrong schema returns 422 Unprocessable Entity."""
+    monkeypatch.setenv("API_SECRET", "test_key")
     response = test_client.post(
         "/predictions/predict",
         json={"features": [0.1]},  # missing required model_id field
+        headers={"X-API-Key": "test_key"},
     )
     assert response.status_code == 422
 

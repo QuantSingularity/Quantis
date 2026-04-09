@@ -75,10 +75,22 @@ async def predict(
 
         model_id = getattr(request, "model_id", 1)
 
+        input_data = request.input_data
+        if isinstance(input_data, dict):
+            features = (
+                input_data.get("features") or list(input_data.values())[0]
+                if input_data
+                else []
+            )
+        elif isinstance(input_data, list):
+            features = input_data
+        else:
+            features = [float(input_data)]
+
         prediction = prediction_service.create_prediction(
             user_id=current_user["user_id"],
             model_id=model_id,
-            input_data=request.features,
+            input_data=features,
         )
 
         return PredictionResponse(
