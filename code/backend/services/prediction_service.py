@@ -171,13 +171,22 @@ class PredictionService:
     def batch_predict(
         self, user_id: int, model_id: int, input_data_list: List[List[float]]
     ) -> List[models.Prediction]:
-        """Create multiple predictions in batch"""
+        """Create multiple predictions in batch.
+
+        Errors on individual items are logged but do not abort the batch.
+        Returns only successful predictions.
+        """
         predictions = []
-        for input_data in input_data_list:
+        errors = 0
+        for idx, input_data in enumerate(input_data_list):
             try:
                 prediction = self.create_prediction(user_id, model_id, input_data)
                 predictions.append(prediction)
             except Exception as e:
-                logger.error(f"Error in batch prediction: {e}")
-                continue
+                errors += 1
+                logger.error(f"Error in batch prediction item {idx}: {e}")
+        if errors > 0:
+            logger.warning(
+                f"Batch prediction completed with {errors}/{len(input_data_list)} failures."
+            )
         return predictions

@@ -1,6 +1,6 @@
 """
 Root conftest: ensures the project root is on sys.path so that
-`backend` and `ml` are importable as top-level packages.
+`backend` and `quant_ml` are importable as top-level packages.
 """
 
 import os

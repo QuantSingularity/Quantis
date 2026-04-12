@@ -25,7 +25,7 @@ def test_client() -> Any:
 
 @pytest.fixture
 def sample_model() -> Any:
-    from ml.models.train_model import TemporalFusionTransformer
+    from quant_ml.models.train_model import TemporalFusionTransformer
 
     model = TemporalFusionTransformer(input_size=128)
     return model

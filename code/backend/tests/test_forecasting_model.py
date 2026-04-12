@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
-from ml.models.train_model import TemporalFusionTransformer, train_model
+from quant_ml.models.train_model import TemporalFusionTransformer, train_model
 
 
 def test_model_with_different_input_sizes() -> None:

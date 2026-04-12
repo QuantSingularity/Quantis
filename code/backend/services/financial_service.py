@@ -232,7 +232,9 @@ class RiskAssessmentService:
                     risk_factors.append("Medium transaction failure rate")
                     risk_score += 10
             large_transactions = [
-                t for t in recent_transactions if t.amount > Decimal("5000")
+                t
+                for t in recent_transactions
+                if Decimal(str(t.amount)) > Decimal("5000")
             ]
             if len(large_transactions) > 5:
                 risk_factors.append("Frequent large transactions")
@@ -394,7 +396,9 @@ class ComplianceMonitoringService:
             if len(recent_transactions) > 20:
                 patterns.append("High frequency transactions")
             round_numbers = [
-                t for t in recent_transactions if t.amount % Decimal("1000") == 0
+                t
+                for t in recent_transactions
+                if Decimal(str(t.amount)) % Decimal("1000") == 0
             ]
             if len(round_numbers) > 5:
                 patterns.append("Multiple round number transactions")
@@ -402,7 +406,7 @@ class ComplianceMonitoringService:
             near_threshold = [
                 t
                 for t in recent_transactions
-                if threshold - Decimal("500") <= t.amount <= threshold
+                if threshold - Decimal("500") <= Decimal(str(t.amount)) <= threshold
             ]
             if len(near_threshold) > 2:
                 patterns.append("Multiple transactions just under reporting threshold")

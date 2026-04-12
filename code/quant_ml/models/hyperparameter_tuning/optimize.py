@@ -1,11 +1,21 @@
 """
 Hyperparameter optimization for Quantis models using Optuna.
+
+Fixes vs original:
+- direction is now validated before study creation (avoid cryptic Optuna error)
+- Added MedianPruner support to kill unpromising trials early
+- Added best_trial metadata to return value
 """
 
-from typing import Any, Dict, Optional
+import logging
+from typing import Any, Callable, Dict, Optional
+
+logger = logging.getLogger(__name__)
+
+VALID_DIRECTIONS = {"minimize", "maximize"}
 
 
-def create_objective(train_fn, input_size: int = 128):
+def create_objective(train_fn: Callable, input_size: int = 128) -> Callable:
     """
     Create an Optuna objective function for the given training function.
 
@@ -30,7 +40,7 @@ def create_objective(train_fn, input_size: int = 128):
 
 
 def run_optimization(
-    train_fn,
+    train_fn: Callable,
     input_size: int = 128,
     n_trials: int = 20,
     timeout: int = 600,
@@ -47,21 +57,33 @@ def run_optimization(
         direction: "minimize" or "maximize".
 
     Returns:
-        Best params dict, or None if optuna is not available.
+        Dict with best_params and best_value, or None if optuna is unavailable.
     """
+    # BUG FIX: validate direction before handing to Optuna (clearer error message)
+    if direction not in VALID_DIRECTIONS:
+        raise ValueError(
+            f"Invalid direction {direction!r}. Must be one of {VALID_DIRECTIONS}."
+        )
+
     try:
         import optuna
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
     except ImportError:
-        import logging
-
-        logging.getLogger(__name__).warning(
+        logger.warning(
             "optuna not installed; hyperparameter optimisation is unavailable."
         )
         return None
 
     objective = create_objective(train_fn, input_size)
-    study = optuna.create_study(direction=direction)
+
+    # Median pruner: stop trials that are clearly worse than the median at intermediate steps
+    pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10)
+    study = optuna.create_study(direction=direction, pruner=pruner)
     study.optimize(objective, n_trials=n_trials, timeout=timeout)
-    return study.best_params
+
+    return {
+        "best_params": study.best_params,
+        "best_value": study.best_value,
+        "n_trials": len(study.trials),
+    }

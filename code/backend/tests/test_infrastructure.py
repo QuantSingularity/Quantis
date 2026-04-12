@@ -6,8 +6,8 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from ml.models.aws_deploy import deploy_to_aws
-from ml.monitoring.metrics_collector import MetricsCollector
+from quant_ml.models.aws_deploy import deploy_to_aws
+from quant_ml.monitoring.metrics_collector import MetricsCollector
 
 
 @pytest.fixture

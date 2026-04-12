@@ -108,16 +108,25 @@ class AuditMiddleware(BaseHTTPMiddleware):
             try:
                 user: Optional[User] = getattr(request.state, "user", None)
                 user_id = user.id if user else None
-                db = next(get_db())
-                AuditLogger.log_event(
-                    db=db,
-                    user_id=user_id,
-                    action=f"{request.method.lower()}_{request.url.path.replace('/', '_')}",
-                    resource_type="api_endpoint",
-                    resource_name=request.url.path,
-                    request=request,
-                    status_code=response.status_code,
-                )
+                # BUG FIX: original code leaked the DB session (no close).
+                # Use the generator protocol correctly with try/finally.
+                db_gen = get_db()
+                db = next(db_gen)
+                try:
+                    AuditLogger.log_event(
+                        db=db,
+                        user_id=user_id,
+                        action=f"{request.method.lower()}_{request.url.path.replace('/', '_')}",
+                        resource_type="api_endpoint",
+                        resource_name=request.url.path,
+                        request=request,
+                        status_code=response.status_code,
+                    )
+                finally:
+                    try:
+                        next(db_gen)
+                    except StopIteration:
+                        pass
             except Exception as e:
                 logger.error("Audit logging failed", error=str(e))
         return response

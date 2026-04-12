@@ -43,3 +43,18 @@ mlflow>=2.10.0
 
 # Misc
 requests>=2.31.0
+
+# Advanced Quantitative Finance (quant_ml/quant/)
+scipy>=1.11.0
+hmmlearn>=0.3.0         # HMM regime detection (optional)
+arch>=6.3.0             # GARCH volatility models (optional)
+
+# Feature store (quant_ml/data/features/)
+feast>=0.36.0           # Feature store integration (optional)
+
+# Hyperparameter optimisation (quant_ml/models/hyperparameter_tuning/)
+optuna>=3.5.0           # Hyperparameter search (optional)
+
+# Data processing (quant_ml/data/)
+dask[dataframe]>=2024.1.0   # Distributed data processing (optional)
+pyarrow>=14.0.0             # Parquet support
