@@ -59,12 +59,14 @@ uvicorn core.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The backend starts successfully when you see:
+
 ```
 INFO: Database initialized successfully
 INFO: Uvicorn running on http://0.0.0.0:8000
 ```
 
 ### API Docs
+
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 - **Health Check**: http://localhost:8000/health
@@ -160,20 +162,20 @@ print(estimate)
 
 ## Bug Fixes Applied
 
-| File | Bug | Fix |
-|------|-----|-----|
-| `quant_ml/models/train_model.py` | `RuntimeError: Can't call numpy() on Tensor that requires grad` | Added `.detach()` before all `.numpy()` calls |
-| `quant_ml/models/train_model.py` | `train_model(None)` crashed immediately | Guard clause converts `None` to `"default"` |
-| `quant_ml/models/train_model.py` | Exploding gradients in LSTM | Added `clip_grad_norm_` + LR scheduler |
-| `quant_ml/models/train_model.py` | `TemporalFusionTransformer` was just a plain MLP | Replaced with proper GRN blocks + multi-head attention |
-| `quant_ml/models/model_serving/serve.py` | `torch.load()` without `weights_only=True` (pickle RCE risk) | Added `weights_only=True` with graceful fallback |
-| `quant_ml/models/mlflow_tracking.py` | `MlflowException: Run already active` on nested calls | Added `nested=bool(mlflow.active_run())` |
-| `quant_ml/models/hyperparameter_tuning/optimize.py` | `direction` not validated before Optuna study creation | Added explicit validation + `MedianPruner` |
-| `quant_ml/models/aws_deploy.py` | Full local path leaked into S3 key | Changed to `os.path.basename(model_path)` |
-| `quant_ml/data/features/feature_store.py` | Feast `ValueType` API removed in Feast ≥ 0.30 | Migrated to `join_keys=["driver_id"]` pattern |
-| `quant_ml/data/process_data.py` | `fit_transform(dask_df)` — sklearn doesn't support Dask | Added `.compute()` to materialise pandas DataFrame first |
-| `quant_ml/monitoring/metrics_collector.py` | `boto3.client()` re-created on every metric call | Client cached at `__init__` time; CloudWatch errors no longer propagate |
-| `backend/core/app.py` | DB session leaked in `AuditMiddleware` (never closed) | Wrapped `get_db()` generator in `try/finally` |
-| `backend/services/financial_service.py` | `t.amount % Decimal(...)` may fail if `amount` is `float` | Wrapped all comparisons with `Decimal(str(t.amount))` |
-| `backend/services/prediction_service.py` | `batch_predict` silently dropped errors with bare `continue` | Added error counter + warning log at end of batch |
-| All test files | Imported from `ml.` (old package name) | Updated to `quant_ml.` |
+| File                                                | Bug                                                             | Fix                                                                     |
+| --------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `quant_ml/models/train_model.py`                    | `RuntimeError: Can't call numpy() on Tensor that requires grad` | Added `.detach()` before all `.numpy()` calls                           |
+| `quant_ml/models/train_model.py`                    | `train_model(None)` crashed immediately                         | Guard clause converts `None` to `"default"`                             |
+| `quant_ml/models/train_model.py`                    | Exploding gradients in LSTM                                     | Added `clip_grad_norm_` + LR scheduler                                  |
+| `quant_ml/models/train_model.py`                    | `TemporalFusionTransformer` was just a plain MLP                | Replaced with proper GRN blocks + multi-head attention                  |
+| `quant_ml/models/model_serving/serve.py`            | `torch.load()` without `weights_only=True` (pickle RCE risk)    | Added `weights_only=True` with graceful fallback                        |
+| `quant_ml/models/mlflow_tracking.py`                | `MlflowException: Run already active` on nested calls           | Added `nested=bool(mlflow.active_run())`                                |
+| `quant_ml/models/hyperparameter_tuning/optimize.py` | `direction` not validated before Optuna study creation          | Added explicit validation + `MedianPruner`                              |
+| `quant_ml/models/aws_deploy.py`                     | Full local path leaked into S3 key                              | Changed to `os.path.basename(model_path)`                               |
+| `quant_ml/data/features/feature_store.py`           | Feast `ValueType` API removed in Feast ≥ 0.30                   | Migrated to `join_keys=["driver_id"]` pattern                           |
+| `quant_ml/data/process_data.py`                     | `fit_transform(dask_df)` — sklearn doesn't support Dask         | Added `.compute()` to materialise pandas DataFrame first                |
+| `quant_ml/monitoring/metrics_collector.py`          | `boto3.client()` re-created on every metric call                | Client cached at `__init__` time; CloudWatch errors no longer propagate |
+| `backend/core/app.py`                               | DB session leaked in `AuditMiddleware` (never closed)           | Wrapped `get_db()` generator in `try/finally`                           |
+| `backend/services/financial_service.py`             | `t.amount % Decimal(...)` may fail if `amount` is `float`       | Wrapped all comparisons with `Decimal(str(t.amount))`                   |
+| `backend/services/prediction_service.py`            | `batch_predict` silently dropped errors with bare `continue`    | Added error counter + warning log at end of batch                       |
+| All test files                                      | Imported from `ml.` (old package name)                          | Updated to `quant_ml.`                                                  |
