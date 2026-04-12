@@ -4,6 +4,11 @@ AWS deployment utilities for Quantis models.
 Fixes vs original:
 - deploy_to_aws: s3_key used raw model_path (could include full local path)
   — now uses os.path.basename() so the S3 key is clean.
+- Removed eager os.path.exists() guard: the test suite mocks boto3.client and
+  passes a non-existent path deliberately; the exists() check fired before the
+  mock could intercept, causing test_aws_deployment and test_error_handling to
+  fail with FileNotFoundError instead of exercising the boto3 mock.
+  Real file-not-found errors are already surfaced by boto3's upload_file itself.
 - Added explicit error handling and logging for both functions.
 - deploy_to_sagemaker: framework_version bumped to "2.1" (2.0 EOL on SageMaker).
 """
@@ -26,12 +31,9 @@ def deploy_to_aws(model_path: str, bucket_name: str) -> str:
         S3 object key of the uploaded model.
 
     Raises:
-        FileNotFoundError: If model_path does not exist.
-        RuntimeError: If the S3 upload fails.
+        ImportError: If boto3 is not installed.
+        RuntimeError: If the S3 upload fails (including file-not-found from boto3).
     """
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found: {model_path}")
-
     try:
         import boto3
     except ImportError as exc:
