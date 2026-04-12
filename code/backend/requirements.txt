@@ -58,3 +58,6 @@ optuna>=3.5.0           # Hyperparameter search (optional)
 # Data processing (quant_ml/data/)
 dask[dataframe]>=2024.1.0   # Distributed data processing (optional)
 pyarrow>=14.0.0             # Parquet support
+
+# Infrastructure & Cloud (Required for AWS tests)
+boto3>=1.28.0
