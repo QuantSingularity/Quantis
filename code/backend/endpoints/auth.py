@@ -11,13 +11,13 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
+import bcrypt as _bcrypt_lib
 import pyotp
 import qrcode
 import redis.asyncio as redis
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from ..core.config import get_settings
@@ -27,7 +27,6 @@ from ..domain.schemas import Token
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = settings.security.algorithm
 SECRET_KEY = settings.security.secret_key
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.security.access_token_expire_minutes
@@ -39,20 +38,17 @@ class SecurityManager:
     """Centralized security management"""
 
     def __init__(self) -> None:
-        self.pwd_context = pwd_context
         self.failed_attempts = {}
 
     def hash_password(self, password: str) -> str:
-        """Hash a password"""
-        return self.pwd_context.hash(
-            hashlib.sha256(password.encode("utf-8")).hexdigest()
-        )
+        """Hash a password using bcrypt directly."""
+        prepared = hashlib.sha256(password.encode("utf-8")).digest()
+        return _bcrypt_lib.hashpw(prepared, _bcrypt_lib.gensalt()).decode("utf-8")
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash"""
-        return self.pwd_context.verify(
-            hashlib.sha256(plain_password.encode("utf-8")).hexdigest(), hashed_password
-        )
+        """Verify a password against its bcrypt hash."""
+        prepared = hashlib.sha256(plain_password.encode("utf-8")).digest()
+        return _bcrypt_lib.checkpw(prepared, hashed_password.encode("utf-8"))
 
     def generate_token(
         self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None

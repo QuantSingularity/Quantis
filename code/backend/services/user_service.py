@@ -6,18 +6,23 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from passlib.context import CryptContext
+import bcrypt as _bcrypt_lib
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from ..domain import models
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _hash_password(password: str) -> str:
+    """Hash a password using bcrypt directly, SHA-256 pre-hashed to stay under 72 bytes."""
+    prepared = hashlib.sha256(password.encode("utf-8")).digest()
+    return _bcrypt_lib.hashpw(prepared, _bcrypt_lib.gensalt()).decode("utf-8")
 
 
-def _prepare_password(password: str) -> str:
-    """Pre-hash password with SHA-256 before bcrypt to avoid the 72-byte limit."""
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+def _verify_password(password: str, hashed: str) -> bool:
+    """Verify a password against a bcrypt hash."""
+    prepared = hashlib.sha256(password.encode("utf-8")).digest()
+    return _bcrypt_lib.checkpw(prepared, hashed.encode("utf-8"))
 
 
 class UserService:
@@ -54,7 +59,7 @@ class UserService:
         user = models.User(
             username=username,
             email=email,
-            hashed_password=pwd_context.hash(_prepare_password(password)),
+            hashed_password=_hash_password(password),
             role_id=role_obj.id,
         )
         self.db.add(user)
@@ -124,7 +129,7 @@ class UserService:
         for key, value in kwargs.items():
             if hasattr(user, key) and key != "id":
                 if key == "password":
-                    user.hashed_password = pwd_context.hash(_prepare_password(value))
+                    user.hashed_password = _hash_password(value)
                 elif key == "role":
                     role_obj = self._get_or_create_role(value)
                     user.role_id = role_obj.id
