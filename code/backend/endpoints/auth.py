@@ -44,11 +44,15 @@ class SecurityManager:
 
     def hash_password(self, password: str) -> str:
         """Hash a password"""
-        return self.pwd_context.hash(password)
+        return self.pwd_context.hash(
+            hashlib.sha256(password.encode("utf-8")).hexdigest()
+        )
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash"""
-        return self.pwd_context.verify(plain_password, hashed_password)
+        return self.pwd_context.verify(
+            hashlib.sha256(plain_password.encode("utf-8")).hexdigest(), hashed_password
+        )
 
     def generate_token(
         self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None

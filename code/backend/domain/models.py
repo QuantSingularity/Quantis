@@ -74,6 +74,16 @@ class UUID(TypeDecorator):
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def _prepare_password(password: str) -> str:
+    """Pre-hash password with SHA-256 to avoid bcrypt's 72-byte limit.
+
+    bcrypt silently truncates (or in newer versions raises) for inputs > 72 bytes.
+    By SHA-256 hashing first (hex digest = 64 chars, always ≤ 72 bytes) we get
+    full-entropy hashing for arbitrarily long passwords.
+    """
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
 class UserRole(PyEnum):
     """User role enumeration"""
 
@@ -250,11 +260,11 @@ class User(Base, AuditMixin, SoftDeleteMixin):
     )
 
     def verify_password(self, password: str) -> bool:
-        return pwd_context.verify(password, self.hashed_password)
+        return pwd_context.verify(_prepare_password(password), self.hashed_password)
 
     @staticmethod
     def hash_password(password: str) -> str:
-        return pwd_context.hash(password)
+        return pwd_context.hash(_prepare_password(password))
 
     def is_locked(self) -> bool:
         return bool(self.locked_until and self.locked_until > datetime.utcnow())
