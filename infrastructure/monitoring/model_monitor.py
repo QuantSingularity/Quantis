@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 from prometheus_client import Gauge, Counter, Histogram
 
 
