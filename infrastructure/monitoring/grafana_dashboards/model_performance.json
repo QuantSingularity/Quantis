@@ -34,7 +34,9 @@
         "title": "GPU Utilization",
         "type": "stat",
         "datasource": "Prometheus",
-        "targets": [{ "expr": "nvidia_gpu_duty_cycle", "legendFormat": "GPU %" }],
+        "targets": [
+          { "expr": "nvidia_gpu_duty_cycle", "legendFormat": "GPU %" }
+        ],
         "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 }
       },
       {
@@ -42,7 +44,9 @@
         "title": "Concept Drift",
         "type": "timeseries",
         "datasource": "Prometheus",
-        "targets": [{ "expr": "concept_drift", "legendFormat": "Performance Degradation" }],
+        "targets": [
+          { "expr": "concept_drift", "legendFormat": "Performance Degradation" }
+        ],
         "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
       },
       {
@@ -67,7 +71,9 @@
         "title": "Predictions per Second",
         "type": "stat",
         "datasource": "Prometheus",
-        "targets": [{ "expr": "rate(predictions_total[1m])", "legendFormat": "RPS" }],
+        "targets": [
+          { "expr": "rate(predictions_total[1m])", "legendFormat": "RPS" }
+        ],
         "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 }
       }
     ]
