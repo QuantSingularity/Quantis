@@ -12,8 +12,6 @@ Quantis is a comprehensive quantitative trading and investment analytics platfor
   <img src="docs/images/Quantis_dashboard.bmp" alt="Quantis Dashboard" width="80%">
 </div>
 
-> **Note**: This project is under active development. Features and functionalities are continuously being enhanced to improve trading capabilities and user experience.
-
 ---
 
 ## Table of Contents
