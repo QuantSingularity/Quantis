@@ -2,9 +2,17 @@
 Shared pytest fixtures for the Quantis test suite.
 """
 
+import os
+import sys
 from typing import Any
 
 import pytest
+
+# Ensure the code/ root (parent of backend/) is on sys.path so that
+# `backend` and `quant_ml` are importable as top-level packages.
+_CODE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _CODE_ROOT not in sys.path:
+    sys.path.insert(0, _CODE_ROOT)
 
 
 @pytest.fixture(scope="session", autouse=True)
