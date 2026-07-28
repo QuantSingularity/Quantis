@@ -8,12 +8,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..auth.auth import readonly_or_above, user_or_admin_required, validate_api_key
 from ..core.database import get_db
-from ..middleware.auth import (
-    readonly_or_above,
-    user_or_admin_required,
-    validate_api_key,
-)
 from ..services.dataset_service import DatasetService
 from ..services.model_service import ModelService
 from ..services.user_service import UserService

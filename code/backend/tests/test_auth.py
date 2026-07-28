@@ -6,6 +6,7 @@ JWT handling, and rate limiting.
 from typing import Any
 
 import pytest
+
 from backend.middleware.auth import RateLimiter, Roles
 
 # ---------------------------------------------------------------------------

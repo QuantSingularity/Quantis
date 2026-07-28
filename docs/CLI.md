@@ -50,8 +50,9 @@ chmod +x scripts/*.sh
 - Verifies installation integrity
 
 **Options:**
-| Flag | Description | Example |
-|------|-------------|---------|
+
+| Flag   | Description          | Example                          |
+| ------ | -------------------- | -------------------------------- |
 | (none) | Full automated setup | `./scripts/setup_quantis_env.sh` |
 
 **Expected Output:**
@@ -81,11 +82,12 @@ Setup complete!
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `setup_environment.sh` | - | Interactive environment setup | `./scripts/setup_environment.sh` |
-| `setup_environment.sh` | `--prod` | Production environment | `./scripts/setup_environment.sh --prod` |
-| `setup_environment.sh` | `--dev` | Development environment | `./scripts/setup_environment.sh --dev` |
+
+| Command                | Arguments | Description                   | Example                                 |
+| ---------------------- | --------- | ----------------------------- | --------------------------------------- |
+| `setup_environment.sh` | -         | Interactive environment setup | `./scripts/setup_environment.sh`        |
+| `setup_environment.sh` | `--prod`  | Production environment        | `./scripts/setup_environment.sh --prod` |
+| `setup_environment.sh` | `--dev`   | Development environment       | `./scripts/setup_environment.sh --dev`  |
 
 ---
 
@@ -102,11 +104,12 @@ Setup complete!
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `run_quantis.sh` | - | Start all services (default mode) | `./scripts/run_quantis.sh` |
-| `run_quantis.sh` | `dev` | Development mode with auto-reload | `./scripts/run_quantis.sh dev` |
-| `run_quantis.sh` | `prod` | Production mode | `./scripts/run_quantis.sh prod` |
+
+| Command          | Arguments | Description                       | Example                         |
+| ---------------- | --------- | --------------------------------- | ------------------------------- |
+| `run_quantis.sh` | -         | Start all services (default mode) | `./scripts/run_quantis.sh`      |
+| `run_quantis.sh` | `dev`     | Development mode with auto-reload | `./scripts/run_quantis.sh dev`  |
+| `run_quantis.sh` | `prod`    | Production mode                   | `./scripts/run_quantis.sh prod` |
 
 **Services Started:**
 
@@ -151,12 +154,13 @@ Press `Ctrl+C` to gracefully stop all services.
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `test_quantis.sh` | - | Run all tests | `./scripts/test_quantis.sh` |
-| `test_quantis.sh` | `--unit` | Run unit tests only | `./scripts/test_quantis.sh --unit` |
+
+| Command           | Arguments       | Description                | Example                                   |
+| ----------------- | --------------- | -------------------------- | ----------------------------------------- |
+| `test_quantis.sh` | -               | Run all tests              | `./scripts/test_quantis.sh`               |
+| `test_quantis.sh` | `--unit`        | Run unit tests only        | `./scripts/test_quantis.sh --unit`        |
 | `test_quantis.sh` | `--integration` | Run integration tests only | `./scripts/test_quantis.sh --integration` |
-| `test_quantis.sh` | `--coverage` | Run with coverage report | `./scripts/test_quantis.sh --coverage` |
+| `test_quantis.sh` | `--coverage`    | Run with coverage report   | `./scripts/test_quantis.sh --coverage`    |
 
 **Example:**
 
@@ -181,12 +185,13 @@ Press `Ctrl+C` to gracefully stop all services.
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
+
+| Command          | Arguments    | Description                | Example                                  |
+| ---------------- | ------------ | -------------------------- | ---------------------------------------- |
 | `test_runner.sh` | `-k PATTERN` | Run tests matching pattern | `./scripts/test_runner.sh -k "test_api"` |
-| `test_runner.sh` | `-m MARKER` | Run tests with marker | `./scripts/test_runner.sh -m "slow"` |
-| `test_runner.sh` | `--verbose` | Verbose output | `./scripts/test_runner.sh --verbose` |
-| `test_runner.sh` | `--failfast` | Stop on first failure | `./scripts/test_runner.sh --failfast` |
+| `test_runner.sh` | `-m MARKER`  | Run tests with marker      | `./scripts/test_runner.sh -m "slow"`     |
+| `test_runner.sh` | `--verbose`  | Verbose output             | `./scripts/test_runner.sh --verbose`     |
+| `test_runner.sh` | `--failfast` | Stop on first failure      | `./scripts/test_runner.sh --failfast`    |
 
 **Test Markers:**
 
@@ -211,12 +216,13 @@ Press `Ctrl+C` to gracefully stop all services.
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `build_quantis.sh` | - | Build all components | `./scripts/build_quantis.sh` |
-| `build_quantis.sh` | `--frontend` | Build frontend only | `./scripts/build_quantis.sh --frontend` |
-| `build_quantis.sh` | `--backend` | Build backend only | `./scripts/build_quantis.sh --backend` |
-| `build_quantis.sh` | `--docker` | Build Docker images | `./scripts/build_quantis.sh --docker` |
+
+| Command            | Arguments    | Description          | Example                                 |
+| ------------------ | ------------ | -------------------- | --------------------------------------- |
+| `build_quantis.sh` | -            | Build all components | `./scripts/build_quantis.sh`            |
+| `build_quantis.sh` | `--frontend` | Build frontend only  | `./scripts/build_quantis.sh --frontend` |
+| `build_quantis.sh` | `--backend`  | Build backend only   | `./scripts/build_quantis.sh --backend`  |
+| `build_quantis.sh` | `--docker`   | Build Docker images  | `./scripts/build_quantis.sh --docker`   |
 
 **Example:**
 
@@ -241,11 +247,12 @@ Press `Ctrl+C` to gracefully stop all services.
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `unified_build.sh` | `dev` | Development build | `./scripts/unified_build.sh dev` |
-| `unified_build.sh` | `staging` | Staging build | `./scripts/unified_build.sh staging` |
-| `unified_build.sh` | `prod` | Production build | `./scripts/unified_build.sh prod` |
+
+| Command            | Arguments | Description       | Example                              |
+| ------------------ | --------- | ----------------- | ------------------------------------ |
+| `unified_build.sh` | `dev`     | Development build | `./scripts/unified_build.sh dev`     |
+| `unified_build.sh` | `staging` | Staging build     | `./scripts/unified_build.sh staging` |
+| `unified_build.sh` | `prod`    | Production build  | `./scripts/unified_build.sh prod`    |
 
 **Build Steps:**
 
@@ -271,12 +278,13 @@ Press `Ctrl+C` to gracefully stop all services.
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `monitoring_dashboard.sh` | `start` | Start monitoring stack | `./scripts/monitoring_dashboard.sh start` |
-| `monitoring_dashboard.sh` | `stop` | Stop monitoring stack | `./scripts/monitoring_dashboard.sh stop` |
-| `monitoring_dashboard.sh` | `restart` | Restart monitoring | `./scripts/monitoring_dashboard.sh restart` |
-| `monitoring_dashboard.sh` | `logs` | View logs | `./scripts/monitoring_dashboard.sh logs` |
+
+| Command                   | Arguments | Description            | Example                                     |
+| ------------------------- | --------- | ---------------------- | ------------------------------------------- |
+| `monitoring_dashboard.sh` | `start`   | Start monitoring stack | `./scripts/monitoring_dashboard.sh start`   |
+| `monitoring_dashboard.sh` | `stop`    | Stop monitoring stack  | `./scripts/monitoring_dashboard.sh stop`    |
+| `monitoring_dashboard.sh` | `restart` | Restart monitoring     | `./scripts/monitoring_dashboard.sh restart` |
+| `monitoring_dashboard.sh` | `logs`    | View logs              | `./scripts/monitoring_dashboard.sh logs`    |
 
 **Access Points:**
 
@@ -308,12 +316,13 @@ Press `Ctrl+C` to gracefully stop all services.
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `linting.sh` | - | Run all linters | `./scripts/linting.sh` |
-| `linting.sh` | `--fix` | Auto-fix issues | `./scripts/linting.sh --fix` |
-| `linting.sh` | `--python` | Python only (pylint, flake8, black) | `./scripts/linting.sh --python` |
-| `linting.sh` | `--javascript` | JavaScript only (ESLint, Prettier) | `./scripts/linting.sh --javascript` |
+
+| Command      | Arguments      | Description                         | Example                             |
+| ------------ | -------------- | ----------------------------------- | ----------------------------------- |
+| `linting.sh` | -              | Run all linters                     | `./scripts/linting.sh`              |
+| `linting.sh` | `--fix`        | Auto-fix issues                     | `./scripts/linting.sh --fix`        |
+| `linting.sh` | `--python`     | Python only (pylint, flake8, black) | `./scripts/linting.sh --python`     |
+| `linting.sh` | `--javascript` | JavaScript only (ESLint, Prettier)  | `./scripts/linting.sh --javascript` |
 
 **Tools Used:**
 
@@ -354,11 +363,12 @@ Press `Ctrl+C` to gracefully stop all services.
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `data_processor.sh` | `process FILE` | Process data file | `./scripts/data_processor.sh process data.csv` |
-| `data_processor.sh` | `validate FILE` | Validate data format | `./scripts/data_processor.sh validate data.csv` |
-| `data_processor.sh` | `clean FILE` | Clean and normalize | `./scripts/data_processor.sh clean data.csv` |
+
+| Command             | Arguments        | Description           | Example                                          |
+| ------------------- | ---------------- | --------------------- | ------------------------------------------------ |
+| `data_processor.sh` | `process FILE`   | Process data file     | `./scripts/data_processor.sh process data.csv`   |
+| `data_processor.sh` | `validate FILE`  | Validate data format  | `./scripts/data_processor.sh validate data.csv`  |
+| `data_processor.sh` | `clean FILE`     | Clean and normalize   | `./scripts/data_processor.sh clean data.csv`     |
 | `data_processor.sh` | `transform FILE` | Apply transformations | `./scripts/data_processor.sh transform data.csv` |
 
 **Example:**
@@ -384,11 +394,12 @@ Press `Ctrl+C` to gracefully stop all services.
 ```
 
 **Arguments:**
-| Command | Arguments | Description | Example |
-|---------|-----------|-------------|---------|
-| `documentation_generator.sh` | - | Generate all docs | `./scripts/documentation_generator.sh` |
-| `documentation_generator.sh` | `--api` | API docs only | `./scripts/documentation_generator.sh --api` |
-| `documentation_generator.sh` | `--code` | Code reference | `./scripts/documentation_generator.sh --code` |
+
+| Command                      | Arguments | Description       | Example                                       |
+| ---------------------------- | --------- | ----------------- | --------------------------------------------- |
+| `documentation_generator.sh` | -         | Generate all docs | `./scripts/documentation_generator.sh`        |
+| `documentation_generator.sh` | `--api`   | API docs only     | `./scripts/documentation_generator.sh --api`  |
+| `documentation_generator.sh` | `--code`  | Code reference    | `./scripts/documentation_generator.sh --code` |
 
 **Generated Files:**
 

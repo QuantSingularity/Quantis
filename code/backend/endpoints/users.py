@@ -73,7 +73,8 @@ async def get_user_by_id(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    if current_user.id != user_id and current_user.role not in ("admin",):
+    current_role_name = current_user.role.role_name if current_user.role else None
+    if current_user.id != user_id and current_role_name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this user's data",
@@ -110,7 +111,8 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    if current_user.id != user_id and current_user.role not in ("admin",):
+    current_role_name = current_user.role.role_name if current_user.role else None
+    if current_user.id != user_id and current_role_name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this user's data",
@@ -150,7 +152,8 @@ async def delete_user(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    if current_user.id == user_id and current_user.role == "admin":
+    current_role_name = current_user.role.role_name if current_user.role else None
+    if current_user.id == user_id and current_role_name == "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin users cannot delete their own account.",

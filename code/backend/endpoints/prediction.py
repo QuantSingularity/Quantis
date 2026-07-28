@@ -9,15 +9,15 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..core.database import get_db
-from ..domain.schemas import PredictionCreate, PredictionResponse
-from ..middleware.auth import (
+from ..auth.auth import (
     admin_required,
     prediction_rate_limit,
     readonly_or_above,
     user_or_admin_required,
     validate_api_key,
 )
+from ..core.database import get_db
+from ..domain.schemas import PredictionCreate, PredictionResponse
 from ..services.model_service import ModelService
 from ..services.prediction_service import PredictionService
 

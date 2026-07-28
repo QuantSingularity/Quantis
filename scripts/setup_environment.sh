@@ -3,9 +3,9 @@
 #
 # This script automates the setup of development environments for the Quantis project:
 # - Installs all required dependencies
-# - Sets up virtual environments for Python components
-# - Configures Node.js environments for frontend components
-# - Sets up database connections
+# - Sets up a virtual environment for the Python backend
+# - Configures Node.js environments for the web and mobile frontends
+# - Sets up database connection configuration
 # - Configures monitoring tools
 #
 # Usage: ./setup_environment.sh [options]
@@ -22,7 +22,7 @@
 # Author: Abrar Ahmed
 # Date: May 22, 2025
 
-set -e  # Exit immediately if a command exits with a non-zero status
+set -uo pipefail
 
 # Colors for terminal output
 GREEN='\033[0;32m'
@@ -36,8 +36,13 @@ SETUP_PYTHON=false
 SETUP_NODE=false
 SETUP_DB=false
 SETUP_MONITORING=false
+SETUP_ALL=false
 ENV="development"
-PROJECT_ROOT=$(pwd)
+# Resolve the actual repository root instead of trusting the caller's
+# current directory — otherwise every path below silently resolves to the
+# wrong place depending on where this script happens to be invoked from.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Function to display help message
 show_help() {
@@ -67,11 +72,9 @@ command_exists() {
 check_system_requirements() {
     echo -e "${BLUE}Checking system requirements...${NC}"
 
-    # Check operating system
     OS=$(uname -s)
     echo "Operating System: $OS"
 
-    # Check available memory
     if command_exists free; then
         TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
         echo "Total Memory: ${TOTAL_MEM}MB"
@@ -81,11 +84,9 @@ check_system_requirements() {
         fi
     fi
 
-    # Check available disk space
-    DISK_SPACE=$(df -h . | awk 'NR==2 {print $4}')
+    DISK_SPACE=$(df -h "${PROJECT_ROOT}" | awk 'NR==2 {print $4}')
     echo "Available Disk Space: $DISK_SPACE"
 
-    # Check CPU cores
     if command_exists nproc; then
         CPU_CORES=$(nproc)
         echo "CPU Cores: $CPU_CORES"
@@ -94,171 +95,120 @@ check_system_requirements() {
     echo -e "${GREEN}System requirements checked.${NC}"
 }
 
-# Function to setup Python environment
+# Function to setup the Python environment
 setup_python_env() {
     echo -e "${BLUE}Setting up Python environment...${NC}"
 
-    # Check if Python is installed
     if ! command_exists python3; then
         echo -e "${RED}Error: Python 3 is required but not installed.${NC}"
         echo "Please install Python 3 and try again."
         exit 1
     fi
 
-    # Check Python version
     PYTHON_VERSION=$(python3 --version | awk '{print $2}')
     echo "Python Version: $PYTHON_VERSION"
 
-    # Create virtual environments for API and models
-    echo "Creating virtual environments..."
-
-    # API virtual environment
-    if [ -d "$PROJECT_ROOT/api" ]; then
-        cd "$PROJECT_ROOT/api"
-
-        if [ ! -d "venv" ]; then
-            echo "Creating API virtual environment..."
-            python3 -m venv venv
-        else
-            echo "API virtual environment already exists."
-        fi
-
-        # Activate virtual environment and install dependencies
-        echo "Installing API dependencies..."
-        source venv/bin/activate
-        pip install --upgrade pip
-
-        if [ -f "requirements.txt" ]; then
-            pip install -r requirements.txt
-        else
-            echo -e "${YELLOW}Warning: requirements.txt not found for API.${NC}"
-        fi
-
-        # Install development dependencies if in dev mode
-        if [ "$ENV" = "development" ] && [ -f "requirements-dev.txt" ]; then
-            pip install -r requirements-dev.txt
-        fi
-
-        deactivate
-    else
-        echo -e "${YELLOW}Warning: API directory not found.${NC}"
+    API_DIR="${PROJECT_ROOT}/code/backend"
+    if [ ! -d "${API_DIR}" ]; then
+        echo -e "${YELLOW}Warning: Backend directory not found at ${API_DIR}.${NC}"
+        return
     fi
 
-    # Models virtual environment
-    if [ -d "$PROJECT_ROOT/models" ]; then
-        cd "$PROJECT_ROOT/models"
+    # A single shared virtual environment is used for the backend API and
+    # the quant_ml library it imports (there is no separate top-level
+    # "models" service with its own environment in this repository).
+    VENV_DIR="${PROJECT_ROOT}/venv"
+    echo "Creating/verifying the virtual environment..."
+    if [ ! -d "${VENV_DIR}" ]; then
+        echo "Creating virtual environment at ${VENV_DIR}..."
+        python3 -m venv "${VENV_DIR}"
+    else
+        echo "Virtual environment already exists at ${VENV_DIR}."
+    fi
 
-        if [ ! -d "venv" ]; then
-            echo "Creating models virtual environment..."
-            python3 -m venv venv
+    echo "Installing backend dependencies..."
+    (
+        set -e
+        # shellcheck source=/dev/null
+        source "${VENV_DIR}/bin/activate"
+        pip install --upgrade pip --quiet
+
+        if [ -f "${API_DIR}/requirements.txt" ]; then
+            pip install -r "${API_DIR}/requirements.txt"
         else
-            echo "Models virtual environment already exists."
+            echo -e "${YELLOW}Warning: requirements.txt not found for the backend.${NC}"
         fi
 
-        # Activate virtual environment and install dependencies
-        echo "Installing models dependencies..."
-        source venv/bin/activate
-        pip install --upgrade pip
-
-        if [ -f "requirements.txt" ]; then
-            pip install -r requirements.txt
-        else
-            echo -e "${YELLOW}Warning: requirements.txt not found for models.${NC}"
-        fi
-
-        # Install development dependencies if in dev mode
-        if [ "$ENV" = "development" ] && [ -f "requirements-dev.txt" ]; then
-            pip install -r requirements-dev.txt
+        if [ "$ENV" = "development" ] && [ -f "${API_DIR}/tests/requirements-test.txt" ]; then
+            pip install -r "${API_DIR}/tests/requirements-test.txt"
         fi
 
         deactivate
-    else
-        echo -e "${YELLOW}Warning: Models directory not found.${NC}"
+    )
+
+    QUANT_ML_DIR="${PROJECT_ROOT}/code/quant_ml"
+    if [ -d "${QUANT_ML_DIR}" ] && [ -f "${QUANT_ML_DIR}/requirements.txt" ]; then
+        echo "Installing quant_ml-specific dependencies into the same virtual environment..."
+        (
+            set -e
+            # shellcheck source=/dev/null
+            source "${VENV_DIR}/bin/activate"
+            pip install -r "${QUANT_ML_DIR}/requirements.txt"
+            deactivate
+        )
     fi
 
     echo -e "${GREEN}Python environment setup completed.${NC}"
 }
 
-# Function to setup Node.js environment
+# Function to setup Node.js environments (web + mobile frontends)
 setup_node_env() {
     echo -e "${BLUE}Setting up Node.js environment...${NC}"
 
-    # Check if Node.js is installed
     if ! command_exists node; then
         echo -e "${RED}Error: Node.js is required but not installed.${NC}"
         echo "Please install Node.js and try again."
         exit 1
     fi
-
-    # Check Node.js version
     NODE_VERSION=$(node --version)
     echo "Node.js Version: $NODE_VERSION"
 
-    # Check if npm is installed
     if ! command_exists npm; then
         echo -e "${RED}Error: npm is required but not installed.${NC}"
         echo "Please install npm and try again."
         exit 1
     fi
-
-    # Check npm version
     NPM_VERSION=$(npm --version)
     echo "npm Version: $NPM_VERSION"
 
-    # Setup web frontend
-    if [ -d "$PROJECT_ROOT/web-frontend" ]; then
-        cd "$PROJECT_ROOT/web-frontend"
-
-        echo "Installing web frontend dependencies..."
-        npm install
-
-        # Create environment-specific configuration
-        if [ "$ENV" = "development" ]; then
-            if [ -f ".env.development.example" ] && [ ! -f ".env.development" ]; then
-                echo "Creating development environment configuration..."
-                cp .env.development.example .env.development
-            fi
-        elif [ "$ENV" = "production" ]; then
-            if [ -f ".env.production.example" ] && [ ! -f ".env.production" ]; then
-                echo "Creating production environment configuration..."
-                cp .env.production.example .env.production
-            fi
+    for frontend in "web-frontend" "mobile-frontend"; do
+        FRONTEND_DIR="${PROJECT_ROOT}/${frontend}"
+        if [ ! -d "${FRONTEND_DIR}" ]; then
+            echo -e "${YELLOW}Warning: ${frontend} directory not found.${NC}"
+            continue
         fi
-    else
-        echo -e "${YELLOW}Warning: Web frontend directory not found.${NC}"
-    fi
 
-    # Setup mobile frontend
-    if [ -d "$PROJECT_ROOT/mobile-frontend" ]; then
-        cd "$PROJECT_ROOT/mobile-frontend"
+        (
+            cd "${FRONTEND_DIR}" || exit 1
+            echo "Installing ${frontend} dependencies..."
+            npm install
 
-        echo "Installing mobile frontend dependencies..."
-        npm install
-
-        # Create environment-specific configuration
-        if [ "$ENV" = "development" ]; then
-            if [ -f ".env.development.example" ] && [ ! -f ".env.development" ]; then
-                echo "Creating development environment configuration..."
-                cp .env.development.example .env.development
+            # Both frontends ship a single .env.example (not separate
+            # per-environment example files), so that's what we seed from.
+            if [ -f ".env.example" ] && [ ! -f ".env" ]; then
+                echo "Creating ${frontend} environment configuration from .env.example..."
+                cp .env.example .env
             fi
-        elif [ "$ENV" = "production" ]; then
-            if [ -f ".env.production.example" ] && [ ! -f ".env.production" ]; then
-                echo "Creating production environment configuration..."
-                cp .env.production.example .env.production
-            fi
-        fi
-    else
-        echo -e "${YELLOW}Warning: Mobile frontend directory not found.${NC}"
-    fi
+        )
+    done
 
     echo -e "${GREEN}Node.js environment setup completed.${NC}"
 }
 
-# Function to setup database connections
+# Function to set up database connection configuration
 setup_db_connections() {
     echo -e "${BLUE}Setting up database connections...${NC}"
 
-    # Check if PostgreSQL client is installed
     if ! command_exists psql; then
         echo -e "${YELLOW}Warning: PostgreSQL client is not installed.${NC}"
         echo "Some database setup steps may be skipped."
@@ -266,66 +216,51 @@ setup_db_connections() {
         echo "PostgreSQL client is installed."
     fi
 
-    # Create database configuration files
-    if [ -d "$PROJECT_ROOT/api" ]; then
-        cd "$PROJECT_ROOT/api"
-
-        if [ -f "database.yml.example" ] && [ ! -f "database.yml" ]; then
-            echo "Creating database configuration..."
-            cp database.yml.example database.yml
-
-            # Update database configuration based on environment
-            if [ "$ENV" = "development" ]; then
-                echo "Configuring for development database..."
-                # Here you would typically modify the database.yml file
-                # with sed or other text manipulation tools
-            elif [ "$ENV" = "production" ]; then
-                echo "Configuring for production database..."
-                # Here you would typically modify the database.yml file
-                # with sed or other text manipulation tools
-            fi
-        fi
+    # The backend is configured via environment variables (see
+    # code/backend/core/config.py and code/backend/.env.example) rather
+    # than a database.yml file, so there is no such template to seed here.
+    API_DIR="${PROJECT_ROOT}/code/backend"
+    if [ -f "${API_DIR}/.env.example" ] && [ ! -f "${API_DIR}/.env" ]; then
+        echo "Creating backend environment configuration from .env.example..."
+        cp "${API_DIR}/.env.example" "${API_DIR}/.env"
     fi
 
-    # Setup InfluxDB configuration for time series data
-    if [ -d "$PROJECT_ROOT/monitoring" ]; then
-        cd "$PROJECT_ROOT/monitoring"
-
-        if [ -f "influxdb.conf.example" ] && [ ! -f "influxdb.conf" ]; then
-            echo "Creating InfluxDB configuration..."
-            cp influxdb.conf.example influxdb.conf
-        fi
+    # Time-series / monitoring configuration lives under infrastructure/monitoring.
+    MONITORING_DIR="${PROJECT_ROOT}/infrastructure/monitoring"
+    if [ -d "${MONITORING_DIR}" ] && [ -f "${MONITORING_DIR}/influxdb.conf.example" ] && [ ! -f "${MONITORING_DIR}/influxdb.conf" ]; then
+        echo "Creating InfluxDB configuration..."
+        cp "${MONITORING_DIR}/influxdb.conf.example" "${MONITORING_DIR}/influxdb.conf"
     fi
 
     echo -e "${GREEN}Database connections setup completed.${NC}"
 }
 
-# Function to setup monitoring tools
+# Function to set up monitoring tools
 setup_monitoring_tools() {
     echo -e "${BLUE}Setting up monitoring tools...${NC}"
 
-    if [ -d "$PROJECT_ROOT/monitoring" ]; then
-        cd "$PROJECT_ROOT/monitoring"
+    MONITORING_DIR="${PROJECT_ROOT}/infrastructure/monitoring"
+    if [ ! -d "${MONITORING_DIR}" ]; then
+        echo -e "${YELLOW}Warning: Monitoring directory not found at ${MONITORING_DIR}.${NC}"
+        return
+    fi
 
-        # Setup Prometheus configuration
-        if [ -f "prometheus.yml.example" ] && [ ! -f "prometheus.yml" ]; then
-            echo "Creating Prometheus configuration..."
-            cp prometheus.yml.example prometheus.yml
-        fi
+    if [ -f "${MONITORING_DIR}/prometheus.yml" ]; then
+        echo "Prometheus configuration already present at ${MONITORING_DIR}/prometheus.yml."
+    elif [ -f "${MONITORING_DIR}/prometheus.yml.example" ]; then
+        echo "Creating Prometheus configuration..."
+        cp "${MONITORING_DIR}/prometheus.yml.example" "${MONITORING_DIR}/prometheus.yml"
+    fi
 
-        # Setup Grafana dashboards
-        if [ -d "grafana_dashboards" ]; then
-            echo "Setting up Grafana dashboards..."
-            # Here you would typically copy or configure Grafana dashboards
-        fi
+    if [ -d "${MONITORING_DIR}/grafana_dashboards" ]; then
+        echo "Grafana dashboards found at ${MONITORING_DIR}/grafana_dashboards."
+    fi
 
-        # Setup alerting rules
-        if [ -f "alerting_rules.yml.example" ] && [ ! -f "alerting_rules.yml" ]; then
-            echo "Creating alerting rules configuration..."
-            cp alerting_rules.yml.example alerting_rules.yml
-        fi
-    else
-        echo -e "${YELLOW}Warning: Monitoring directory not found.${NC}"
+    if [ -f "${MONITORING_DIR}/alert_rules.yml" ]; then
+        echo "Alerting rules already present at ${MONITORING_DIR}/alert_rules.yml."
+    elif [ -f "${MONITORING_DIR}/alerting_rules.yml.example" ]; then
+        echo "Creating alerting rules configuration..."
+        cp "${MONITORING_DIR}/alerting_rules.yml.example" "${MONITORING_DIR}/alerting_rules.yml"
     fi
 
     echo -e "${GREEN}Monitoring tools setup completed.${NC}"
@@ -385,7 +320,7 @@ if [ $# -eq 0 ]; then
     show_help
 fi
 
-while [ "$1" != "" ]; do
+while [ $# -gt 0 ]; do
     case $1 in
         --all )     SETUP_PYTHON=true
                     SETUP_NODE=true
@@ -417,11 +352,10 @@ done
 # Main execution
 echo -e "${BLUE}Starting Quantis environment setup...${NC}"
 echo -e "Environment: ${YELLOW}$ENV${NC}"
+echo -e "Repository root: ${PROJECT_ROOT}"
 
-# Check system requirements
 check_system_requirements
 
-# Setup components
 if $SETUP_PYTHON || $SETUP_ALL; then
     setup_python_env
 fi
@@ -438,7 +372,6 @@ if $SETUP_MONITORING || $SETUP_ALL; then
     setup_monitoring_tools
 fi
 
-# Create .env file
 if $SETUP_ALL; then
     create_env_file
 fi

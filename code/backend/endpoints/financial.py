@@ -44,10 +44,14 @@ async def create_transaction(
         financial_services = get_financial_services(db)
         get_compliance_services(db)
 
+        # The schema accepts a float for ease of use over JSON, but the
+        # compliance/risk services below expect Decimal for exact arithmetic.
+        transaction_amount_decimal = Decimal(str(transaction.amount))
+
         # Risk assessment
         risk_assessment = financial_services["risk_assessment"].assess_transaction_risk(
             user_id=current_user.id,
-            transaction_amount=transaction.amount,
+            transaction_amount=transaction_amount_decimal,
             transaction_type=TransactionType(transaction.transaction_type),
             counterparty_info=transaction.counterparty_info,
         )
@@ -57,18 +61,19 @@ async def create_transaction(
             "compliance_monitoring"
         ].monitor_transaction_limits(
             user_id=current_user.id,
-            transaction_amount=transaction.amount,
+            transaction_amount=transaction_amount_decimal,
             transaction_type=TransactionType(transaction.transaction_type),
         )
 
         # AML requirements check
         aml_check = financial_services["compliance_monitoring"].check_aml_requirements(
-            user_id=current_user.id, transaction_amount=transaction.amount
+            user_id=current_user.id, transaction_amount=transaction_amount_decimal
         )
 
         # Check if transaction should be blocked
         if not limit_check["compliant"]:
             audit_logger.log_security_event(
+                db=db,
                 user_id=current_user.id,
                 action="transaction_blocked",
                 resource_type="transaction",
@@ -91,6 +96,17 @@ async def create_transaction(
             transaction_status = TransactionStatus.COMPLETED
 
         # Create transaction record
+        # risk_assessment / limit_check / aml_check may contain raw Decimal
+        # values (e.g. limit thresholds, current totals) which aren't
+        # JSON-serializable for the compliance_flags column — convert first.
+        compliance_flags = financial_services["reporting"]._convert_decimals_to_strings(
+            {
+                "aml_check": aml_check,
+                "risk_assessment": risk_assessment,
+                "limit_check": limit_check,
+            }
+        )
+
         db_transaction = Transaction(
             user_id=current_user.id,
             amount=transaction.amount,
@@ -100,11 +116,7 @@ async def create_transaction(
             counterparty_info=transaction.counterparty_info,
             risk_level=risk_assessment["risk_level"].value,
             risk_score=risk_assessment["risk_score"],
-            compliance_flags={
-                "aml_check": aml_check,
-                "risk_assessment": risk_assessment,
-                "limit_check": limit_check,
-            },
+            compliance_flags=compliance_flags,
         )
 
         db.add(db_transaction)
@@ -113,6 +125,7 @@ async def create_transaction(
 
         # Log transaction creation
         audit_logger.log_security_event(
+            db=db,
             user_id=current_user.id,
             action="transaction_created",
             resource_type="transaction",
@@ -127,6 +140,7 @@ async def create_transaction(
 
         return TransactionResponse(
             id=db_transaction.id,
+            user_id=db_transaction.user_id,
             amount=db_transaction.amount,
             transaction_type=db_transaction.transaction_type,
             status=db_transaction.status,
@@ -155,7 +169,7 @@ async def get_user_transactions(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     transaction_type: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
+    transaction_status: Optional[str] = Query(None),
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     current_user: User = Depends(get_current_user),
@@ -169,8 +183,8 @@ async def get_user_transactions(
         if transaction_type:
             query = query.filter(Transaction.transaction_type == transaction_type)
 
-        if status:
-            query = query.filter(Transaction.status == status)
+        if transaction_status:
+            query = query.filter(Transaction.status == transaction_status)
 
         if start_date:
             query = query.filter(Transaction.created_at >= start_date)
@@ -192,6 +206,7 @@ async def get_user_transactions(
             response_transactions.append(
                 TransactionResponse(
                     id=transaction.id,
+                    user_id=transaction.user_id,
                     amount=transaction.amount,
                     transaction_type=transaction.transaction_type,
                     status=transaction.status,
@@ -236,6 +251,7 @@ async def get_transaction(
 
         return TransactionResponse(
             id=transaction.id,
+            user_id=transaction.user_id,
             amount=transaction.amount,
             transaction_type=transaction.transaction_type,
             status=transaction.status,
@@ -315,6 +331,7 @@ async def approve_transaction(
 
         # Log approval
         audit_logger.log_security_event(
+            db=db,
             user_id=current_user.id,
             action="transaction_approved",
             resource_type="transaction",
@@ -376,6 +393,7 @@ async def reject_transaction(
 
         # Log rejection
         audit_logger.log_security_event(
+            db=db,
             user_id=current_user.id,
             action="transaction_rejected",
             resource_type="transaction",

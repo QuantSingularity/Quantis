@@ -27,11 +27,75 @@ def _verify_password(password: str, hashed: str) -> bool:
 
 class UserService:
 
+    # Every permission name referenced by @require_permission(...) across the
+    # API. New roles are seeded with a sensible subset so that a freshly
+    # registered user isn't locked out of their own data by default.
+    DEFAULT_ROLE_PERMISSIONS = {
+        "user": [
+            "create_dataset",
+            "upload_dataset",
+            "read_datasets",
+            "read_dataset",
+            "read_dataset_preview",
+            "read_dataset_stats",
+            "download_dataset",
+            "update_dataset",
+            "delete_dataset",
+            "read_user",
+            "update_user",
+        ],
+        "admin": [
+            "create_dataset",
+            "create_permission",
+            "create_role",
+            "delete_all_datasets",
+            "delete_dataset",
+            "delete_permission",
+            "delete_role",
+            "delete_user",
+            "download_all_datasets",
+            "download_dataset",
+            "read_all_dataset_preview",
+            "read_all_dataset_stats",
+            "read_all_datasets",
+            "read_dataset",
+            "read_dataset_preview",
+            "read_dataset_stats",
+            "read_datasets",
+            "read_permissions",
+            "read_roles",
+            "read_user",
+            "read_users",
+            "update_all_datasets",
+            "update_dataset",
+            "update_role",
+            "update_user",
+            "upload_dataset",
+        ],
+    }
+
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    def _get_or_create_permission(self, permission_name: str) -> models.Permission:
+        """Get an existing permission or create it."""
+        permission = (
+            self.db.query(models.Permission)
+            .filter(models.Permission.permission_name == permission_name)
+            .first()
+        )
+        if not permission:
+            permission = models.Permission(
+                permission_name=permission_name,
+                description=permission_name.replace("_", " ").capitalize(),
+            )
+            self.db.add(permission)
+            self.db.commit()
+            self.db.refresh(permission)
+        return permission
+
     def _get_or_create_role(self, role_name: str) -> models.Role:
-        """Get existing role or create it."""
+        """Get existing role or create it, seeding default permissions."""
         role = (
             self.db.query(models.Role)
             .filter(models.Role.role_name == role_name)
@@ -39,6 +103,11 @@ class UserService:
         )
         if not role:
             role = models.Role(role_name=role_name, description=f"{role_name} role")
+            default_permission_names = self.DEFAULT_ROLE_PERMISSIONS.get(role_name, [])
+            role.permissions = [
+                self._get_or_create_permission(name)
+                for name in default_permission_names
+            ]
             self.db.add(role)
             self.db.commit()
             self.db.refresh(role)

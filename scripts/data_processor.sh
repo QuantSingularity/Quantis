@@ -36,7 +36,10 @@ CLEAN_DATA=false
 TRANSFORM_DATA=false
 EXPORT_DATA=false
 DATA_SOURCE="market"
-PROJECT_ROOT=$(pwd)
+# Resolve the actual repository root instead of trusting the caller's
+# current directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OUTPUT_DIR="$PROJECT_ROOT/data/processed"
 
 # Function to display help message
@@ -604,7 +607,7 @@ def merge_market_and_alternative_data():
         merged_df = merged_df.sort_values('date')
 
         # Fill missing values
-        merged_df = merged_df.fillna(method='ffill')
+        merged_df = merged_df.ffill()
 
         # Save merged data
         output_file = os.path.join(OUTPUT_DIR_TRANSFORM, f"{symbol}_merged_data.csv")

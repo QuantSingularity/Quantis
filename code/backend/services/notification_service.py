@@ -6,9 +6,9 @@ import logging
 import smtplib
 from datetime import datetime, timedelta
 from email import encoders
-from email.mime.base import MimeBase
-from email.mime.multipart import MimeMultipart
-from email.mime.text import MimeText
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -136,18 +136,18 @@ class NotificationService:
         attachments: Optional[List[str]] = None,
     ) -> bool:
         """Send email notification"""
-        if self._is_email_configured == False():
+        if not self._is_email_configured():
             logger.warning("Email not configured, skipping email notification")
             return False
         try:
-            msg = MimeMultipart("alternative")
+            msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = settings.smtp_username
             msg["To"] = to_email
-            text_part = MimeText(message, "plain")
+            text_part = MIMEText(message, "plain")
             msg.attach(text_part)
             if html_message:
-                html_part = MimeText(html_message, "html")
+                html_part = MIMEText(html_message, "html")
                 msg.attach(html_part)
             if attachments:
                 for file_path in attachments:
@@ -169,11 +169,11 @@ class NotificationService:
             [settings.smtp_server, settings.smtp_username, settings.smtp_password]
         )
 
-    def _add_attachment(self, msg: MimeMultipart, file_path: str) -> Any:
+    def _add_attachment(self, msg: MIMEMultipart, file_path: str) -> Any:
         """Add file attachment to email"""
         try:
             with open(file_path, "rb") as attachment:
-                part = MimeBase("application", "octet-stream")
+                part = MIMEBase("application", "octet-stream")
                 part.set_payload(attachment.read())
             encoders.encode_base64(part)
             part.add_header(
@@ -294,7 +294,10 @@ class NotificationService:
         """Send alert to all admin users"""
         admin_users = (
             self.db.query(models.User)
-            .filter(models.User.role == "admin", models.User.is_active)
+            .filter(
+                models.User.role.has(role_name="admin"),
+                models.User.is_active == True,
+            )
             .all()
         )
         admin_ids = [user.id for user in admin_users]

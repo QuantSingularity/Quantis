@@ -5,6 +5,7 @@ Authentication and security system for Quantis API
 import hashlib
 import io
 import logging
+import os
 import secrets
 import time
 from datetime import datetime, timedelta
@@ -403,8 +404,18 @@ async def get_current_user(
     return await get_current_user_from_token(credentials, db)
 
 
-def require_permission(required_permissions: List[str]) -> Any:
-    """Decorator to require specific user permissions"""
+def require_permission(required_permissions: Any) -> Any:
+    """
+    Decorator to require specific user permission(s).
+
+    Accepts either a single permission name (``"read_datasets"``) or a list
+    of permission names (``["read_datasets", "read_dataset"]``) — every
+    call site in this codebase uses the single-string form, so a bare
+    string is normalized into a one-element list here rather than being
+    iterated character-by-character.
+    """
+    if isinstance(required_permissions, str):
+        required_permissions = [required_permissions]
 
     def decorator(func):
 
@@ -465,6 +476,31 @@ def require_verified_user(current_user: User = Depends(get_current_user)) -> Any
 
 class AuditLogger:
     """Audit logging for security events"""
+
+    @staticmethod
+    def log_security_event(
+        db: Session,
+        user_id: Optional[int],
+        action: str,
+        resource_type: str = "security",
+        resource_id: Optional[Any] = None,
+        details: Optional[Dict[str, Any]] = None,
+        request: Optional[Request] = None,
+    ) -> Any:
+        """
+        Log a security-relevant event (e.g. blocked transactions, suspicious
+        activity). Thin wrapper around ``log_event`` with a security-oriented
+        default resource type.
+        """
+        return AuditLogger.log_event(
+            db=db,
+            user_id=user_id,
+            action=action,
+            resource_type=resource_type,
+            resource_id=str(resource_id) if resource_id is not None else None,
+            details=details,
+            request=request,
+        )
 
     @staticmethod
     def log_event(
@@ -707,5 +743,618 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[Token]:
 
 # Router for authentication endpoints
 from fastapi import APIRouter
+from fastapi import status as _status
+
+from ..domain.schemas import (
+    ApiKeyCreate,
+    ApiKeyResponse,
+    ApiKeyWithSecret,
+    MFADisable,
+    MFAEnable,
+    MFAResponse,
+    PasswordChange,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    Token,
+    TokenRefresh,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+)
+from ..services.user_service import UserService
 
 router = APIRouter()
+
+
+@router.post(
+    "/register", response_model=UserResponse, status_code=_status.HTTP_201_CREATED
+)
+async def register(
+    payload: UserCreate, request: Request, db: Session = Depends(get_db)
+) -> Any:
+    """Register a new user account."""
+    user_service = UserService(db)
+    try:
+        user = user_service.create_user(
+            username=payload.username,
+            email=payload.email,
+            password=payload.password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=_status.HTTP_409_CONFLICT, detail=str(e))
+    if payload.first_name or payload.last_name or payload.phone_number:
+        user_service.update_user(
+            user.id,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            phone_number=payload.phone_number,
+        )
+        db.refresh(user)
+    AuditLogger.log_event(
+        db=db,
+        user_id=user.id,
+        action="user_register",
+        resource_type="user",
+        resource_id=str(user.id),
+        resource_name=user.username,
+        request=request,
+        status_code=201,
+    )
+    return user
+
+
+@router.post("/login", response_model=Token)
+async def login(
+    payload: UserLogin, request: Request, db: Session = Depends(get_db)
+) -> Any:
+    """Authenticate a user and return access/refresh tokens."""
+    try:
+        user = authenticate_user(db, payload.username, payload.password)
+    except HTTPException:
+        AuditLogger.log_login_attempt(
+            db=db,
+            username=payload.username,
+            success=False,
+            request=request,
+            failure_reason="account_locked",
+        )
+        raise
+    if not user:
+        AuditLogger.log_login_attempt(
+            db=db,
+            username=payload.username,
+            success=False,
+            request=request,
+            failure_reason="invalid_credentials",
+        )
+        raise HTTPException(
+            status_code=_status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+        )
+    if user.is_mfa_enabled:
+        if not payload.mfa_code:
+            raise HTTPException(
+                status_code=_status.HTTP_403_FORBIDDEN,
+                detail="MFA code required",
+            )
+        if not user.mfa_secret or not security_manager.verify_mfa_code(
+            user.mfa_secret, payload.mfa_code
+        ):
+            AuditLogger.log_login_attempt(
+                db=db,
+                username=payload.username,
+                success=False,
+                request=request,
+                user_id=user.id,
+                failure_reason="invalid_mfa_code",
+            )
+            raise HTTPException(
+                status_code=_status.HTTP_403_FORBIDDEN, detail="Invalid MFA code"
+            )
+    tokens = create_tokens(user)
+    await create_user_session(
+        db=db,
+        user=user,
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+        request=request,
+    )
+    AuditLogger.log_login_attempt(
+        db=db, username=payload.username, success=True, request=request, user_id=user.id
+    )
+    return tokens
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh(payload: TokenRefresh, db: Session = Depends(get_db)) -> Any:
+    """Exchange a valid refresh token for a new access/refresh token pair."""
+    tokens = refresh_access_token(db, payload.refresh_token)
+    if not tokens:
+        raise HTTPException(
+            status_code=_status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+    return tokens
+
+
+@router.post("/logout", status_code=_status.HTTP_204_NO_CONTENT, response_model=None)
+async def logout(
+    payload: TokenRefresh,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Invalidate the session associated with the given refresh token."""
+    session = (
+        db.query(UserSession)
+        .filter(
+            UserSession.user_id == current_user.id,
+            UserSession.refresh_token == payload.refresh_token,
+        )
+        .first()
+    )
+    if session:
+        session.is_active = False
+        db.commit()
+    AuditLogger.log_event(
+        db=db,
+        user_id=current_user.id,
+        action="user_logout",
+        resource_type="user_session",
+        resource_name=current_user.username,
+        request=request,
+    )
+    return None
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user)) -> Any:
+    """Return the currently authenticated user's profile."""
+    return current_user
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_me(
+    payload: Dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Update the currently authenticated user's profile."""
+    user_service = UserService(db)
+    allowed_fields = {
+        "first_name",
+        "last_name",
+        "phone_number",
+        "timezone",
+        "preferences",
+    }
+    updates = {k: v for k, v in payload.items() if k in allowed_fields}
+    updated_user = user_service.update_user(current_user.id, **updates)
+    if not updated_user:
+        raise HTTPException(
+            status_code=_status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return updated_user
+
+
+@router.post(
+    "/change-password", status_code=_status.HTTP_204_NO_CONTENT, response_model=None
+)
+async def change_password(
+    payload: PasswordChange,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Change the currently authenticated user's password."""
+    if not security_manager.verify_password(
+        payload.current_password, current_user.hashed_password
+    ):
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+    current_user.hashed_password = security_manager.hash_password(payload.new_password)
+    db.commit()
+    AuditLogger.log_event(
+        db=db,
+        user_id=current_user.id,
+        action="password_change",
+        resource_type="user",
+        resource_id=str(current_user.id),
+        resource_name=current_user.username,
+        request=request,
+    )
+    return None
+
+
+@router.post("/mfa/setup", response_model=MFAResponse)
+async def setup_mfa(
+    request: Request,
+    current_user: User = Depends(get_current_user_for_mfa_setup),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Generate a new MFA secret and QR code for the current user (not yet enabled)."""
+    if current_user.is_mfa_enabled:
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST, detail="MFA is already enabled"
+        )
+    secret = security_manager.generate_mfa_secret()
+    current_user.mfa_secret = secret
+    db.commit()
+    uri = security_manager.get_mfa_uri(current_user.email, secret)
+    qr_code_svg = security_manager.generate_qr_code_svg(uri)
+    AuditLogger.log_mfa_event(
+        db=db,
+        user_id=current_user.id,
+        action="mfa_setup_initiated",
+        request=request,
+        success=True,
+    )
+    return MFAResponse(
+        qr_code_svg=qr_code_svg,
+        secret=secret,
+        message="Scan the QR code with your authenticator app, then confirm with a one-time code to enable MFA.",
+    )
+
+
+@router.post("/mfa/enable", response_model=UserResponse)
+async def enable_mfa(
+    payload: MFAEnable,
+    request: Request,
+    current_user: User = Depends(get_current_user_for_mfa_setup),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Confirm MFA setup with a one-time code and enable it for the account."""
+    if not security_manager.verify_password(
+        payload.password, current_user.hashed_password
+    ):
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST, detail="Password is incorrect"
+        )
+    if not current_user.mfa_secret:
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST,
+            detail="MFA setup has not been initiated. Call /auth/mfa/setup first.",
+        )
+    if not security_manager.verify_mfa_code(current_user.mfa_secret, payload.otp_code):
+        AuditLogger.log_mfa_event(
+            db=db,
+            user_id=current_user.id,
+            action="mfa_enable_failed",
+            request=request,
+            success=False,
+        )
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code"
+        )
+    current_user.is_mfa_enabled = True
+    db.commit()
+    db.refresh(current_user)
+    AuditLogger.log_mfa_event(
+        db=db,
+        user_id=current_user.id,
+        action="mfa_enabled",
+        request=request,
+        success=True,
+    )
+    return current_user
+
+
+@router.post("/mfa/disable", response_model=UserResponse)
+async def disable_mfa(
+    payload: MFADisable,
+    request: Request,
+    current_user: User = Depends(get_current_user_for_mfa_setup),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Disable MFA for the current user after verifying a one-time code."""
+    if not current_user.is_mfa_enabled or not current_user.mfa_secret:
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST, detail="MFA is not enabled"
+        )
+    if not security_manager.verify_mfa_code(current_user.mfa_secret, payload.otp_code):
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code"
+        )
+    current_user.is_mfa_enabled = False
+    current_user.mfa_secret = None
+    db.commit()
+    db.refresh(current_user)
+    AuditLogger.log_mfa_event(
+        db=db,
+        user_id=current_user.id,
+        action="mfa_disabled",
+        request=request,
+        success=True,
+    )
+    return current_user
+
+
+@router.post(
+    "/forgot-password", status_code=_status.HTTP_202_ACCEPTED, response_model=None
+)
+async def forgot_password(
+    payload: PasswordResetRequest, request: Request, db: Session = Depends(get_db)
+) -> Any:
+    """
+    Request a password reset email. Always returns 202 regardless of whether
+    the email exists, to avoid leaking account existence. In debug mode the
+    reset token is also returned in the response body so the flow can be
+    exercised without a configured SMTP server.
+    """
+    user = (
+        db.query(User)
+        .filter(User.email == payload.email, User.is_active == True)
+        .first()
+    )
+    response_body: Dict[str, Any] = {
+        "message": "If an account with that email exists, a reset link has been sent."
+    }
+    if not user:
+        return response_body
+
+    reset_token = security_manager.generate_token(
+        {"sub": str(user.id), "type": "password_reset"}, timedelta(minutes=30)
+    )
+    AuditLogger.log_event(
+        db=db,
+        user_id=user.id,
+        action="password_reset_requested",
+        resource_type="user",
+        resource_id=str(user.id),
+        resource_name=user.username,
+        request=request,
+    )
+
+    try:
+        from ..services.notification_service import NotificationService
+
+        notification_service = NotificationService(db)
+        if notification_service._is_email_configured():
+            notification_service.send_email_notification(
+                to_email=user.email,
+                subject="Reset your Quantis password",
+                message=(
+                    f"Hi {user.username},\n\n"
+                    f"Use this token to reset your password (valid for 30 minutes):\n\n"
+                    f"{reset_token}\n\n"
+                    "If you did not request this, you can safely ignore this email."
+                ),
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send password reset email: {e}")
+
+    if settings.debug:
+        response_body["reset_token"] = reset_token
+    return response_body
+
+
+@router.post(
+    "/reset-password", status_code=_status.HTTP_204_NO_CONTENT, response_model=None
+)
+async def reset_password(
+    payload: PasswordResetConfirm, request: Request, db: Session = Depends(get_db)
+) -> Any:
+    """Reset a user's password using a valid password-reset token."""
+    token_data = security_manager.verify_token(payload.token)
+    if not token_data or token_data.get("type") != "password_reset":
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+    user_id = token_data.get("sub")
+    user = (
+        db.query(User).filter(User.id == int(user_id), User.is_active == True).first()
+    )
+    if not user:
+        raise HTTPException(
+            status_code=_status.HTTP_400_BAD_REQUEST, detail="Invalid reset token"
+        )
+
+    user.hashed_password = security_manager.hash_password(payload.new_password)
+    user.login_attempts = 0
+    user.locked_until = None
+    db.commit()
+
+    # Invalidate all active sessions for this user as a security precaution.
+    db.query(UserSession).filter(
+        UserSession.user_id == user.id, UserSession.is_active == True
+    ).update({"is_active": False})
+    db.commit()
+
+    AuditLogger.log_event(
+        db=db,
+        user_id=user.id,
+        action="password_reset_completed",
+        resource_type="user",
+        resource_id=str(user.id),
+        resource_name=user.username,
+        request=request,
+    )
+    return None
+
+
+async def validate_api_key(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    JWT-compatible drop-in replacement for the legacy API-key-only
+    ``middleware.auth.validate_api_key`` dependency.
+
+    Preserves that dependency's shared-secret system bypass (an
+    ``X-API-Key`` header matching the ``API_SECRET`` environment variable
+    authenticates as a system/admin identity — used by trusted internal
+    services and CI), and otherwise defers to ``get_current_user``, which
+    accepts either a JWT bearer token or a database-registered API key.
+    """
+    api_key_header = request.headers.get("X-API-Key")
+    env_api_key = os.getenv("API_SECRET")
+    if env_api_key and api_key_header and api_key_header == env_api_key:
+        return {
+            "user_id": "system",
+            "username": "system",
+            "email": "system@quantis.local",
+            "role": "admin",
+        }
+
+    current_user = await get_current_user(request, credentials, db)
+    role_name = current_user.role.role_name if current_user.role else "user"
+    return {
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": role_name,
+    }
+
+
+def _require_role_dict(allowed_roles: List[str]) -> Any:
+    async def dependency(
+        current_user: Dict[str, Any] = Depends(validate_api_key),
+    ) -> Dict[str, Any]:
+        if current_user["role"] not in allowed_roles:
+            raise HTTPException(
+                status_code=_status.HTTP_403_FORBIDDEN,
+                detail=f"Requires one of roles: {', '.join(allowed_roles)}",
+            )
+        return current_user
+
+    return dependency
+
+
+# JWT-compatible role-gated dependencies, mirroring middleware.auth's
+# RoleChecker-based `user_or_admin_required` / `readonly_or_above` / `admin_required`.
+user_or_admin_required = _require_role_dict(["user", "admin"])
+readonly_or_above = _require_role_dict(["readonly", "user", "admin"])
+admin_required = _require_role_dict(["admin"])
+
+
+async def prediction_rate_limit(
+    current_user: Dict[str, Any] = Depends(validate_api_key),
+) -> Dict[str, Any]:
+    """JWT-compatible rate limiter for prediction endpoints (30 req/min per identity)."""
+    identifier = f"prediction:{current_user['user_id']}"
+    if not security_manager.check_rate_limit(identifier, limit=30, window=60):
+        raise HTTPException(
+            status_code=_status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded. Try again later.",
+        )
+    return current_user
+
+
+@router.get("/api-keys", response_model=List[ApiKeyResponse])
+async def list_api_keys(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> Any:
+    """List all active API keys for the current user."""
+    user_service = UserService(db)
+    keys = user_service.get_user_api_keys(current_user.id)
+    return [
+        ApiKeyResponse(
+            id=k.id,
+            name=k.name,
+            description=getattr(k, "description", None),
+            expires_at=k.expires_at,
+            rate_limit=getattr(k, "rate_limit", 1000),
+            scopes=getattr(k, "scopes", []) or [],
+            ip_whitelist=getattr(k, "ip_whitelist", []) or [],
+            key_preview=f"{k.key_hash[:8]}...",
+            is_active=k.is_active,
+            last_used=k.last_used,
+            usage_count=getattr(k, "usage_count", 0) or 0,
+            created_at=k.created_at,
+            updated_at=k.updated_at,
+        )
+        for k in keys
+    ]
+
+
+@router.post(
+    "/api-keys", response_model=ApiKeyWithSecret, status_code=_status.HTTP_201_CREATED
+)
+async def create_api_key(
+    payload: ApiKeyCreate,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Create a new API key for the current user. The full key is only ever shown once."""
+    user_service = UserService(db)
+    expires_days = 0
+    if payload.expires_at:
+        delta = payload.expires_at - datetime.utcnow()
+        expires_days = max(delta.days, 1)
+    raw_key = user_service.create_api_key(
+        current_user.id, payload.name, expires_days=expires_days or 30
+    )
+    created = (
+        db.query(ApiKey)
+        .filter(ApiKey.user_id == current_user.id)
+        .order_by(ApiKey.id.desc())
+        .first()
+    )
+    if not created:
+        raise HTTPException(
+            status_code=_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve created API key",
+        )
+    AuditLogger.log_event(
+        db=db,
+        user_id=current_user.id,
+        action="api_key_created",
+        resource_type="api_key",
+        resource_id=str(created.id),
+        resource_name=payload.name,
+        request=request,
+    )
+    return ApiKeyWithSecret(
+        id=created.id,
+        name=created.name,
+        description=payload.description,
+        expires_at=created.expires_at,
+        rate_limit=payload.rate_limit,
+        scopes=payload.scopes or [],
+        ip_whitelist=payload.ip_whitelist or [],
+        key_preview=f"{raw_key[:8]}...",
+        is_active=created.is_active,
+        last_used=created.last_used,
+        usage_count=0,
+        created_at=created.created_at,
+        updated_at=created.updated_at,
+        key=raw_key,
+    )
+
+
+@router.delete(
+    "/api-keys/{key_id}", status_code=_status.HTTP_204_NO_CONTENT, response_model=None
+)
+async def revoke_api_key(
+    key_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Revoke one of the current user's API keys."""
+    key = (
+        db.query(ApiKey)
+        .filter(ApiKey.id == key_id, ApiKey.user_id == current_user.id)
+        .first()
+    )
+    if not key:
+        raise HTTPException(
+            status_code=_status.HTTP_404_NOT_FOUND, detail="API key not found"
+        )
+    key.is_active = False
+    db.commit()
+    AuditLogger.log_event(
+        db=db,
+        user_id=current_user.id,
+        action="api_key_revoked",
+        resource_type="api_key",
+        resource_id=str(key_id),
+        resource_name=key.name,
+        request=request,
+    )
+    return None

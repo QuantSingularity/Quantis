@@ -38,9 +38,16 @@ LINT_JS=false
 LINT_SHELL=false
 LINT_YAML=false
 LINT_MARKDOWN=false
+LINT_ALL=false
 AUTO_FIX=false
 GENERATE_REPORT=false
-PROJECT_ROOT=$(pwd)
+# Resolve the actual repository root regardless of the caller's current
+# directory — using $(pwd) here meant running this script from inside
+# scripts/ (a very natural way to invoke it) silently limited every "find"
+# below to the scripts/ directory itself, reporting "no files found" for
+# every category.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPORT_DIR="$PROJECT_ROOT/lint_reports"
 
 # Function to display help message
@@ -105,7 +112,13 @@ check_dependencies() {
         if ! command_exists shellcheck; then
             echo -e "${YELLOW}Warning: shellcheck is not installed. Installing...${NC}"
             if command_exists apt-get; then
-                sudo apt-get update && sudo apt-get install -y shellcheck
+                if sudo -n true 2>/dev/null; then
+                    sudo apt-get update && sudo apt-get install -y shellcheck
+                else
+                    echo -e "${RED}Error: shellcheck is missing and passwordless sudo is not available.${NC}"
+                    echo -e "${RED}Install it manually with: sudo apt-get install -y shellcheck${NC}"
+                    exit 1
+                fi
             elif command_exists brew; then
                 brew install shellcheck
             else
@@ -146,9 +159,9 @@ lint_python() {
     echo -e "${BLUE}Linting Python code...${NC}"
 
     # Find all Python files
-    PYTHON_FILES=$(find "$PROJECT_ROOT" -type f -name "*.py" | grep -v "venv/" | grep -v "__pycache__/" | grep -v ".git/")
+    mapfile -t PYTHON_FILES < <(find "$PROJECT_ROOT" -type f -name "*.py" | grep -v "/venv/" | grep -v "__pycache__/" | grep -v "/\.git/")
 
-    if [ -z "$PYTHON_FILES" ]; then
+    if [ "${#PYTHON_FILES[@]}" -eq 0 ]; then
         echo -e "${YELLOW}No Python files found to lint.${NC}"
         return
     fi
@@ -156,25 +169,25 @@ lint_python() {
     # Run flake8
     echo "Running flake8..."
     if $GENERATE_REPORT; then
-        flake8 $PYTHON_FILES --output-file="$REPORT_DIR/flake8_report.txt"
+        flake8 "${PYTHON_FILES[@]}" --output-file="$REPORT_DIR/flake8_report.txt" || true
     else
-        flake8 $PYTHON_FILES
+        flake8 "${PYTHON_FILES[@]}" || true
     fi
 
     # Run pylint
     echo "Running pylint..."
     if $GENERATE_REPORT; then
-        pylint $PYTHON_FILES --output-format=text > "$REPORT_DIR/pylint_report.txt" || true
+        pylint "${PYTHON_FILES[@]}" --output-format=text > "$REPORT_DIR/pylint_report.txt" || true
     else
-        pylint $PYTHON_FILES || true
+        pylint "${PYTHON_FILES[@]}" || true
     fi
 
     # Run mypy
     echo "Running mypy..."
     if $GENERATE_REPORT; then
-        mypy $PYTHON_FILES --no-error-summary > "$REPORT_DIR/mypy_report.txt" 2>&1 || true
+        mypy "${PYTHON_FILES[@]}" --no-error-summary > "$REPORT_DIR/mypy_report.txt" 2>&1 || true
     else
-        mypy $PYTHON_FILES || true
+        mypy "${PYTHON_FILES[@]}" || true
     fi
 
     echo -e "${GREEN}Python linting completed.${NC}"
@@ -184,15 +197,18 @@ lint_python() {
 lint_js() {
     echo -e "${BLUE}Linting JavaScript/TypeScript code...${NC}"
 
-    # Check if ESLint config exists
-    if [ ! -f "$PROJECT_ROOT/.eslintrc.js" ] && [ ! -f "$PROJECT_ROOT/.eslintrc.json" ]; then
+    # Check if an ESLint config exists. This project uses per-directory
+    # configs (web-frontend/.eslintrc.cjs, mobile-frontend/.eslintrc.cjs)
+    # rather than a single root-level one, so check broadly instead of
+    # assuming a root .eslintrc.js/.json that will never exist here.
+    if ! find "$PROJECT_ROOT" -maxdepth 2 \( -name ".eslintrc*" \) -not -path "*/node_modules/*" | grep -q .; then
         echo -e "${YELLOW}Warning: No ESLint configuration found. Using default configuration.${NC}"
     fi
 
     # Find all JS/TS files
-    JS_FILES=$(find "$PROJECT_ROOT" -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) | grep -v "node_modules/" | grep -v ".git/")
+    mapfile -t JS_FILES < <(find "$PROJECT_ROOT" -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) | grep -v "/node_modules/" | grep -v "/\.git/")
 
-    if [ -z "$JS_FILES" ]; then
+    if [ "${#JS_FILES[@]}" -eq 0 ]; then
         echo -e "${YELLOW}No JavaScript/TypeScript files found to lint.${NC}"
         return
     fi
@@ -201,27 +217,27 @@ lint_js() {
     echo "Running ESLint..."
     if $AUTO_FIX; then
         if $GENERATE_REPORT; then
-            eslint --fix $JS_FILES -o "$REPORT_DIR/eslint_report.json" --format json || true
+            eslint --fix "${JS_FILES[@]}" -o "$REPORT_DIR/eslint_report.json" --format json || true
         else
-            eslint --fix $JS_FILES || true
+            eslint --fix "${JS_FILES[@]}" || true
         fi
     else
         if $GENERATE_REPORT; then
-            eslint $JS_FILES -o "$REPORT_DIR/eslint_report.json" --format json || true
+            eslint "${JS_FILES[@]}" -o "$REPORT_DIR/eslint_report.json" --format json || true
         else
-            eslint $JS_FILES || true
+            eslint "${JS_FILES[@]}" || true
         fi
     fi
 
     # Run Prettier
     echo "Running Prettier..."
     if $AUTO_FIX; then
-        prettier --write $JS_FILES
+        prettier --write "${JS_FILES[@]}"
     else
         if $GENERATE_REPORT; then
-            prettier --check $JS_FILES > "$REPORT_DIR/prettier_report.txt" 2>&1 || true
+            prettier --check "${JS_FILES[@]}" > "$REPORT_DIR/prettier_report.txt" 2>&1 || true
         else
-            prettier --check $JS_FILES || true
+            prettier --check "${JS_FILES[@]}" || true
         fi
     fi
 
@@ -233,9 +249,9 @@ lint_shell() {
     echo -e "${BLUE}Linting shell scripts...${NC}"
 
     # Find all shell scripts
-    SHELL_FILES=$(find "$PROJECT_ROOT" -type f -name "*.sh" | grep -v ".git/")
+    mapfile -t SHELL_FILES < <(find "$PROJECT_ROOT" -type f -name "*.sh" | grep -v "/\.git/")
 
-    if [ -z "$SHELL_FILES" ]; then
+    if [ "${#SHELL_FILES[@]}" -eq 0 ]; then
         echo -e "${YELLOW}No shell scripts found to lint.${NC}"
         return
     fi
@@ -243,9 +259,9 @@ lint_shell() {
     # Run shellcheck
     echo "Running shellcheck..."
     if $GENERATE_REPORT; then
-        shellcheck -f checkstyle $SHELL_FILES > "$REPORT_DIR/shellcheck_report.xml" || true
+        shellcheck -f checkstyle "${SHELL_FILES[@]}" > "$REPORT_DIR/shellcheck_report.xml" || true
     else
-        shellcheck $SHELL_FILES || true
+        shellcheck "${SHELL_FILES[@]}" || true
     fi
 
     echo -e "${GREEN}Shell script linting completed.${NC}"
@@ -256,9 +272,9 @@ lint_yaml() {
     echo -e "${BLUE}Linting YAML files...${NC}"
 
     # Find all YAML files
-    YAML_FILES=$(find "$PROJECT_ROOT" -type f \( -name "*.yml" -o -name "*.yaml" \) | grep -v ".git/")
+    mapfile -t YAML_FILES < <(find "$PROJECT_ROOT" -type f \( -name "*.yml" -o -name "*.yaml" \) | grep -v "/\.git/")
 
-    if [ -z "$YAML_FILES" ]; then
+    if [ "${#YAML_FILES[@]}" -eq 0 ]; then
         echo -e "${YELLOW}No YAML files found to lint.${NC}"
         return
     fi
@@ -266,9 +282,9 @@ lint_yaml() {
     # Run yamllint
     echo "Running yamllint..."
     if $GENERATE_REPORT; then
-        yamllint -f parsable $YAML_FILES > "$REPORT_DIR/yamllint_report.txt" || true
+        yamllint -f parsable "${YAML_FILES[@]}" > "$REPORT_DIR/yamllint_report.txt" || true
     else
-        yamllint $YAML_FILES || true
+        yamllint "${YAML_FILES[@]}" || true
     fi
 
     echo -e "${GREEN}YAML linting completed.${NC}"
@@ -279,9 +295,9 @@ lint_markdown() {
     echo -e "${BLUE}Linting Markdown files...${NC}"
 
     # Find all Markdown files
-    MD_FILES=$(find "$PROJECT_ROOT" -type f -name "*.md" | grep -v ".git/")
+    mapfile -t MD_FILES < <(find "$PROJECT_ROOT" -type f -name "*.md" | grep -v "/\.git/")
 
-    if [ -z "$MD_FILES" ]; then
+    if [ "${#MD_FILES[@]}" -eq 0 ]; then
         echo -e "${YELLOW}No Markdown files found to lint.${NC}"
         return
     fi
@@ -289,9 +305,9 @@ lint_markdown() {
     # Run markdownlint
     echo "Running markdownlint..."
     if $GENERATE_REPORT; then
-        markdownlint $MD_FILES > "$REPORT_DIR/markdownlint_report.txt" || true
+        markdownlint "${MD_FILES[@]}" > "$REPORT_DIR/markdownlint_report.txt" || true
     else
-        markdownlint $MD_FILES || true
+        markdownlint "${MD_FILES[@]}" || true
     fi
 
     echo -e "${GREEN}Markdown linting completed.${NC}"

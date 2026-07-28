@@ -1,47 +1,41 @@
 {
-  "name": "quantis-frontend",
-  "version": "1.0.0",
+  "name": "quantis-web",
+  "version": "2.0.0",
   "private": true,
+  "type": "module",
+  "description": "Quantis — modern financial forecasting & ML platform web app",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.jsx",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "dependencies": {
-    "@emotion/react": "^11.11.0",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.11.16",
-    "@mui/lab": "^5.0.0-alpha.129",
-    "@mui/material": "^5.13.0",
-    "@mui/x-data-grid": "^6.4.0",
-    "axios": "^1.4.0",
-    "formik": "^2.2.9",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.11.1",
-    "react-scripts": "5.0.1",
-    "recharts": "^2.7.2",
-    "react-dropzone": "^14.2.3",
-    "yup": "^1.1.1"
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^6.1.6",
+    "@mui/material": "^6.1.6",
+    "axios": "^1.7.7",
+    "date-fns": "^4.1.0",
+    "notistack": "^3.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "recharts": "^2.13.3"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^14.4.3",
-    "@types/jest": "^29.5.2",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "jest": "^29.5.0",
-    "typescript": "^4.9.5"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@vitejs/plugin-react": "^4.3.3",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "jsdom": "^25.0.1",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.5"
   },
   "browserslist": {
     "production": [
@@ -54,6 +48,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "proxy": "http://localhost:8000"
+  }
 }

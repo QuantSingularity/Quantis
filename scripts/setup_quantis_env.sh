@@ -1,175 +1,172 @@
 #!/bin/bash
-
+#
 # Quantis Project Setup Script (Comprehensive)
+#
+# Installs dependencies for the backend API, web frontend, and mobile
+# frontend. Safe to re-run — each section is independent and best-effort
+# (a missing/optional component is skipped with a warning rather than
+# aborting the whole setup).
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
+set -uo pipefail
 
 # Prerequisites (ensure these are installed):
-# - Python 3.8+ (the script will use python3.11 available in the environment)
-# - pip (Python package installer)
-# - Node.js 14+ (for frontend components)
-# - npm (Node package manager)
-# - Docker and Docker Compose (optional, for containerized deployment as mentioned in README)
+# - Python 3.9+ and pip
+# - Node.js 18+ and npm
+# - Docker and Docker Compose (optional, for containerized deployment)
 
 echo "Starting Quantis project setup..."
 
-PROJECT_DIR="/Quantis"
+# Resolve the repository root dynamically instead of assuming a fixed
+# install location, so this script works regardless of where the repo was
+# cloned/extracted.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-if [ ! -d "${PROJECT_DIR}" ]; then
-  echo "Error: Project directory ${PROJECT_DIR} not found."
-  echo "Please ensure the project is extracted correctly."
-  exit 1
+cd "${PROJECT_DIR}" || exit 1
+echo "Using project root: $(pwd)"
+
+# Prefer python3.11 if present (matches CI), otherwise fall back to
+# whatever python3 is available so this doesn't fail on other valid
+# Python 3 installations.
+if command -v python3.11 &> /dev/null; then
+  PYTHON_BIN="python3.11"
+elif command -v python3 &> /dev/null; then
+  PYTHON_BIN="python3"
+else
+  echo "Error: no python3 interpreter found on PATH. Cannot set up the backend."
+  PYTHON_BIN=""
 fi
-
-cd "${PROJECT_DIR}"
-echo "Changed directory to $(pwd)"
 
 # --- Backend API Setup (FastAPI/Python) ---
 echo ""
 echo "Setting up Quantis Backend API..."
-API_DIR="${PROJECT_DIR}/api"
+API_DIR="${PROJECT_DIR}/code/backend"
 
 if [ ! -d "${API_DIR}" ]; then
     echo "Error: Backend API directory ${API_DIR} not found. Skipping API setup."
+elif [ -z "${PYTHON_BIN}" ]; then
+    echo "Skipping API setup: no Python interpreter available."
 else
-    cd "${API_DIR}"
-    echo "Changed directory to $(pwd) for API setup."
+    (
+      cd "${API_DIR}" || exit 1
+      echo "Changed directory to $(pwd) for API setup."
 
-    if [ ! -f "requirements.txt" ]; then
-        echo "Error: requirements.txt not found in ${API_DIR}. Cannot install API dependencies."
-    else
-        echo "Creating Python virtual environment for API (venv_quantis_api_py)..."
-        if ! python3.11 -m venv venv_quantis_api_py; then
-            echo "Failed to create API virtual environment. Please check your Python installation."
-        else
-            source venv_quantis_api_py/bin/activate
-            echo "API Python virtual environment created and activated."
+      if [ ! -f "requirements.txt" ]; then
+          echo "Error: requirements.txt not found in ${API_DIR}. Cannot install API dependencies."
+      else
+          VENV_DIR="${PROJECT_DIR}/venv"
+          if [ -d "${VENV_DIR}" ]; then
+              echo "Reusing existing virtual environment at ${VENV_DIR}."
+          else
+              echo "Creating Python virtual environment at ${VENV_DIR}..."
+              "${PYTHON_BIN}" -m venv "${VENV_DIR}" || echo "Failed to create the virtual environment. Please check your Python installation."
+          fi
 
-            echo "Installing API Python dependencies from requirements.txt..."
-            pip3 install -r requirements.txt
-            echo "API dependencies installed."
+          if [ -f "${VENV_DIR}/bin/activate" ]; then
+              # shellcheck source=/dev/null
+              source "${VENV_DIR}/bin/activate"
+              echo "Virtual environment activated."
 
-            echo "To activate the API virtual environment later, run: source ${API_DIR}/venv_quantis_api_py/bin/activate"
-            echo "To start the API server (from ${API_DIR} with venv activated): uvicorn app:app --reload (as per README)"
-            deactivate
-            echo "API Python virtual environment deactivated."
-        fi
-    fi
-    cd "${PROJECT_DIR}" # Return to the main project directory
+              echo "Installing API Python dependencies from requirements.txt..."
+              pip3 install -r requirements.txt
+              echo "API dependencies installed."
+
+              echo "To activate this virtual environment later, run: source ${VENV_DIR}/bin/activate"
+              echo "To start the API server (from ${PROJECT_DIR}, with the venv activated):"
+              echo "  uvicorn code.backend.core.app:app --reload"
+              deactivate
+              echo "Virtual environment deactivated."
+          fi
+      fi
+    )
 fi
 
-# --- Web Frontend Setup (React/Node.js) ---
+# --- Web Frontend Setup (React/Vite) ---
 echo ""
 echo "Setting up Quantis Web Frontend..."
-# README structure shows frontend/, but package.json was found in web-frontend/
-WEB_FRONTEND_DIR_QUANTIS="${PROJECT_DIR}/web-frontend"
+WEB_FRONTEND_DIR="${PROJECT_DIR}/web-frontend"
 
-if [ ! -d "${WEB_FRONTEND_DIR_QUANTIS}" ]; then
-    # Fallback to frontend/ if web-frontend/ doesn't exist, as per README structure diagram
-    if [ -d "${PROJECT_DIR}/frontend" ]; then
-        WEB_FRONTEND_DIR_QUANTIS="${PROJECT_DIR}/frontend"
-        echo "Note: Using ${WEB_FRONTEND_DIR_QUANTIS} as web-frontend directory was not found."
-    else
-        echo "Error: Web Frontend directory (neither ${PROJECT_DIR}/web-frontend nor ${PROJECT_DIR}/frontend) not found. Skipping Web Frontend setup."
-        WEB_FRONTEND_DIR_QUANTIS=""
-    fi
+if [ ! -d "${WEB_FRONTEND_DIR}" ]; then
+    echo "Error: Web Frontend directory ${WEB_FRONTEND_DIR} not found. Skipping Web Frontend setup."
+elif [ ! -f "${WEB_FRONTEND_DIR}/package.json" ]; then
+    echo "Error: package.json not found in ${WEB_FRONTEND_DIR}. Cannot install Web Frontend dependencies."
+else
+    (
+      cd "${WEB_FRONTEND_DIR}" || exit 1
+      echo "Changed directory to $(pwd) for Web Frontend setup."
+
+      if ! command -v npm &> /dev/null; then
+          echo "npm command not found. Please install Node.js and npm, then re-run this script."
+      else
+          echo "Installing Web Frontend Node.js dependencies using npm..."
+          npm install
+          echo "Web Frontend dependencies installed."
+          echo "To start the Web Frontend development server (from ${WEB_FRONTEND_DIR}): npm run dev"
+          echo "To build the Web Frontend for production (from ${WEB_FRONTEND_DIR}): npm run build"
+      fi
+    )
 fi
 
-if [ -n "${WEB_FRONTEND_DIR_QUANTIS}" ] && [ -d "${WEB_FRONTEND_DIR_QUANTIS}" ]; then
-    cd "${WEB_FRONTEND_DIR_QUANTIS}"
-    echo "Changed directory to $(pwd) for Web Frontend setup."
-
-    if [ ! -f "package.json" ]; then
-        echo "Error: package.json not found in ${WEB_FRONTEND_DIR_QUANTIS}. Cannot install Web Frontend dependencies."
-    else
-        echo "Installing Web Frontend Node.js dependencies using npm..."
-        if ! command -v npm &> /dev/null; then echo "npm command not found."; else npm install; fi
-        echo "Web Frontend dependencies installed."
-        echo "To start the Web Frontend development server (from ${WEB_FRONTEND_DIR_QUANTIS}): npm start (as per package.json)"
-        echo "To build the Web Frontend for production (from ${WEB_FRONTEND_DIR_QUANTIS}): npm run build (as per package.json)"
-    fi
-    cd "${PROJECT_DIR}" # Return to the main project directory
-fi
-
-# --- Mobile Frontend Setup (Next.js/Node.js) ---
+# --- Mobile Frontend Setup (Expo/React Native) ---
 echo ""
 echo "Setting up Quantis Mobile Frontend..."
-MOBILE_FRONTEND_DIR_QUANTIS="${PROJECT_DIR}/mobile-frontend"
+MOBILE_FRONTEND_DIR="${PROJECT_DIR}/mobile-frontend"
 
-if [ ! -d "${MOBILE_FRONTEND_DIR_QUANTIS}" ]; then
-    echo "Error: Mobile Frontend directory ${MOBILE_FRONTEND_DIR_QUANTIS} not found. Skipping Mobile Frontend setup."
+if [ ! -d "${MOBILE_FRONTEND_DIR}" ]; then
+    echo "Error: Mobile Frontend directory ${MOBILE_FRONTEND_DIR} not found. Skipping Mobile Frontend setup."
+elif [ ! -f "${MOBILE_FRONTEND_DIR}/package.json" ]; then
+    echo "Error: package.json not found in ${MOBILE_FRONTEND_DIR}. Cannot install Mobile Frontend dependencies."
 else
-    cd "${MOBILE_FRONTEND_DIR_QUANTIS}"
-    echo "Changed directory to $(pwd) for Mobile Frontend setup."
+    (
+      cd "${MOBILE_FRONTEND_DIR}" || exit 1
+      echo "Changed directory to $(pwd) for Mobile Frontend setup."
 
-    if [ ! -f "package.json" ]; then
-        echo "Error: package.json not found in ${MOBILE_FRONTEND_DIR_QUANTIS}. Cannot install Mobile Frontend dependencies."
-    else
-        echo "Installing Mobile Frontend Node.js dependencies using pnpm (as indicated by packageManager in package.json)..."
-        if ! command -v pnpm &> /dev/null; then
-            echo "pnpm command not found. Attempting to install pnpm globally using npm..."
-            if command -v npm &> /dev/null; then
-                sudo npm install -g pnpm
-                if ! command -v pnpm &> /dev/null; then
-                    echo "Failed to install pnpm. Please install pnpm manually and re-run or install dependencies manually."
-                else
-                    echo "pnpm installed successfully. Proceeding with dependency installation."
-                    pnpm install
-                    echo "Mobile Frontend dependencies installed using pnpm."
-                fi
-            else
-                echo "npm command not found. Cannot install pnpm. Please install pnpm manually and re-run or install dependencies manually."
-            fi
-        else
-            pnpm install
-            echo "Mobile Frontend dependencies installed using pnpm."
-        fi
-        echo "To start the Mobile Frontend development server (from ${MOBILE_FRONTEND_DIR_QUANTIS}): pnpm dev (as per package.json)"
-        echo "To build the Mobile Frontend for production (from ${MOBILE_FRONTEND_DIR_QUANTIS}): pnpm build (as per package.json)"
-    fi
-    cd "${PROJECT_DIR}" # Return to the main project directory
+      if ! command -v npm &> /dev/null; then
+          echo "npm command not found. Please install Node.js and npm, then re-run this script."
+      else
+          echo "Installing Mobile Frontend Node.js dependencies using npm..."
+          npm install
+          echo "Mobile Frontend dependencies installed."
+          echo "To start the Mobile Frontend dev server (from ${MOBILE_FRONTEND_DIR}): npm start"
+          echo "  Then press 'a' for Android, 'i' for iOS, or 'w' for web in the Expo CLI."
+          echo "Native production builds are produced via EAS Build (https://docs.expo.dev/build/introduction/),"
+          echo "not a local 'npm run build' — there is no such script for Expo apps."
+      fi
+    )
 fi
 
-# --- Models Setup (Python) ---
+# --- Quant ML library setup (Python) ---
 echo ""
-echo "Setting up Quantis Models..."
-MODELS_DIR_QUANTIS="${PROJECT_DIR}/models"
+echo "Setting up Quantis quant_ml library..."
+QUANT_ML_DIR="${PROJECT_DIR}/code/quant_ml"
 
-if [ ! -d "${MODELS_DIR_QUANTIS}" ]; then
-    echo "Warning: Models directory ${MODELS_DIR_QUANTIS} not found. Skipping models setup."
+if [ ! -d "${QUANT_ML_DIR}" ]; then
+    echo "Warning: quant_ml directory ${QUANT_ML_DIR} not found. Skipping."
 else
-    cd "${MODELS_DIR_QUANTIS}"
-    echo "Changed directory to $(pwd) for models setup."
-    # Check if there's a specific requirements.txt for models
-    if [ -f "requirements.txt" ]; then
-        echo "Found requirements.txt in ${MODELS_DIR_QUANTIS}. Consider setting up a separate Python environment for models or installing into the main API environment."
-        echo "Example: pip3 install -r requirements.txt (ensure correct venv is active if desired)"
-    elif [ -f "../api/requirements.txt" ]; then # Check if it uses the API's requirements
-        echo "No specific requirements.txt in ${MODELS_DIR_QUANTIS}. It might use dependencies from the API's requirements.txt or have them listed in the main project requirements.txt (if one existed at root)."
+    if [ -f "${QUANT_ML_DIR}/requirements.txt" ]; then
+        echo "Found a dedicated requirements.txt in ${QUANT_ML_DIR}."
+        echo "Install it into the backend virtual environment with:"
+        echo "  source ${PROJECT_DIR}/venv/bin/activate && pip3 install -r ${QUANT_ML_DIR}/requirements.txt"
     else
-        echo "No requirements.txt found in ${MODELS_DIR_QUANTIS}. Dependencies for models might be part of the API or need manual identification."
+        echo "No dedicated requirements.txt in ${QUANT_ML_DIR}; it is imported directly by the backend"
+        echo "and shares the backend's virtual environment and dependencies."
     fi
-    echo "Refer to README or specific scripts like 'train_model.py' in ${MODELS_DIR_QUANTIS} for instructions on training and using models."
-    cd "${PROJECT_DIR}" # Return to the main project directory
 fi
 
 # --- Docker Compose (Optional) ---
 echo ""
-INFRA_DIR_QUANTIS="${PROJECT_DIR}/infrastructure"
-if [ -f "${INFRA_DIR_QUANTIS}/docker-compose.yml" ]; then
-    echo "Found docker-compose.yml in ${INFRA_DIR_QUANTIS}."
-    echo "You can potentially run the application using Docker Compose:"
-    echo "cd ${INFRA_DIR_QUANTIS} && docker-compose up -d"
-    echo "Ensure Docker and Docker Compose are installed and configured."
-elif [ -f "docker-compose.yml" ]; then # Check root as well
+INFRA_DIR="${PROJECT_DIR}/infrastructure"
+if [ -f "${INFRA_DIR}/docker-compose.yml" ]; then
+    echo "Found docker-compose.yml in ${INFRA_DIR}."
+    echo "You can run the application using Docker Compose:"
+    echo "  cd ${INFRA_DIR} && docker-compose up -d"
+elif [ -f "${PROJECT_DIR}/docker-compose.yml" ]; then
     echo "Found docker-compose.yml in the project root ${PROJECT_DIR}."
-    echo "You can potentially run the application using Docker Compose:"
-    echo "cd ${PROJECT_DIR} && docker-compose up -d"
-    echo "Ensure Docker and Docker Compose are installed and configured."
+    echo "You can run the application using Docker Compose:"
+    echo "  cd ${PROJECT_DIR} && docker-compose up -d"
 fi
 
 echo ""
 echo "Quantis project setup script finished."
-echo "Please ensure all prerequisites (Python, Node.js, npm, pnpm, Docker, Docker Compose if used) are installed."
-echo "Review the project's README.md and the instructions above for running different components."
+echo "Please ensure all prerequisites (Python, Node.js, npm, Docker if used) are installed."
+echo "Review the project's README.md and the instructions above for running each component."

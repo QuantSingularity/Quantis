@@ -28,12 +28,23 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Default settings
-PROJECT_ROOT=$(pwd)
-MONITORING_DIR="$PROJECT_ROOT/monitoring"
+# Resolve the actual repository root instead of trusting the caller's
+# current directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# The project's real, already-configured monitoring stack lives at
+# infrastructure/monitoring (with prometheus.yml, alert_rules.yml,
+# grafana_dashboards/, grafana_provisioning/ already committed) — not a
+# fabricated top-level "monitoring" directory.
+MONITORING_DIR="$PROJECT_ROOT/infrastructure/monitoring"
 GRAFANA_DIR="$MONITORING_DIR/grafana_dashboards"
 BACKUP_DIR="$PROJECT_ROOT/monitoring_backups"
 PROMETHEUS_PORT=9090
 GRAFANA_PORT=3000
+# Detect either Docker Compose v1 (standalone "docker-compose" binary) or
+# the now-standard v2 plugin form ("docker compose"), since v1 is
+# deprecated and increasingly absent on current Docker installations.
+DOCKER_COMPOSE_CMD=""
 
 # Function to display help message
 show_help() {
@@ -70,14 +81,21 @@ check_dependencies() {
         exit 1
     fi
 
-    # Check Docker Compose
-    if ! command_exists docker-compose; then
+    # Check Docker Compose — prefer the v1 standalone binary if present,
+    # otherwise fall back to the v2 "docker compose" plugin subcommand
+    # (v1 is deprecated and often no longer installed on current systems).
+    if command_exists docker-compose; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+    elif docker compose version >/dev/null 2>&1; then
+        DOCKER_COMPOSE_CMD="docker compose"
+    else
         echo -e "${RED}Error: Docker Compose is required but not installed.${NC}"
-        echo "Please install Docker Compose and try again."
+        echo "Please install Docker Compose (either the standalone docker-compose"
+        echo "binary or the 'docker compose' plugin) and try again."
         exit 1
     fi
 
-    echo -e "${GREEN}All required monitoring dependencies are installed.${NC}"
+    echo -e "${GREEN}All required monitoring dependencies are installed (using: ${DOCKER_COMPOSE_CMD}).${NC}"
 }
 
 # Function to setup monitoring stack
@@ -87,6 +105,17 @@ setup_monitoring() {
     # Create monitoring directory if it doesn't exist
     mkdir -p "$MONITORING_DIR"
     mkdir -p "$GRAFANA_DIR"
+
+    # This repository already ships real, curated monitoring configuration
+    # under infrastructure/monitoring (prometheus.yml, alert_rules.yml,
+    # grafana_dashboards/, grafana_provisioning/). Never blindly overwrite
+    # those with generic boilerplate — only create files that don't exist yet.
+    if [ -f "$MONITORING_DIR/docker-compose.yml" ]; then
+        echo -e "${YELLOW}$MONITORING_DIR/docker-compose.yml already exists — leaving it untouched.${NC}"
+        echo -e "${YELLOW}Delete it first if you want this script to regenerate it.${NC}"
+        echo -e "${GREEN}Monitoring stack setup completed (nothing to do).${NC}"
+        return
+    fi
 
     # Create Docker Compose file for monitoring stack
     cat > "$MONITORING_DIR/docker-compose.yml" << EOF
@@ -130,7 +159,12 @@ volumes:
   grafana_data:
 EOF
 
-    # Create Prometheus configuration file
+    # Create Prometheus configuration file (only if one doesn't already exist —
+    # this repo ships a real, tailored prometheus.yml that must not be
+    # silently replaced with generic placeholder scrape targets).
+    if [ -f "$MONITORING_DIR/prometheus.yml" ]; then
+        echo -e "${YELLOW}$MONITORING_DIR/prometheus.yml already exists — leaving it untouched.${NC}"
+    else
     cat > "$MONITORING_DIR/prometheus.yml" << EOF
 global:
   scrape_interval: 15s
@@ -165,12 +199,16 @@ scrape_configs:
     static_configs:
       - targets: ['host.docker.internal:9100']
 EOF
+    fi
 
     # Create Grafana provisioning directories
     mkdir -p "$MONITORING_DIR/grafana_provisioning/datasources"
     mkdir -p "$MONITORING_DIR/grafana_provisioning/dashboards"
 
-    # Create Grafana datasource configuration
+    # Create Grafana datasource configuration (skip if one already exists)
+    if [ -f "$MONITORING_DIR/grafana_provisioning/datasources/prometheus.yml" ]; then
+        echo -e "${YELLOW}Grafana datasource config already exists — leaving it untouched.${NC}"
+    else
     cat > "$MONITORING_DIR/grafana_provisioning/datasources/prometheus.yml" << EOF
 apiVersion: 1
 
@@ -182,8 +220,15 @@ datasources:
     isDefault: true
     editable: false
 EOF
+    fi
 
-    # Create Grafana dashboard provisioning configuration
+    # Create Grafana dashboard provisioning configuration (skip if one
+    # already exists under either the legacy "dashboards.yml" or the name
+    # already used by this repo, "dashboard.yml").
+    if [ -f "$MONITORING_DIR/grafana_provisioning/dashboards/dashboards.yml" ] || \
+       [ -f "$MONITORING_DIR/grafana_provisioning/dashboards/dashboard.yml" ]; then
+        echo -e "${YELLOW}Grafana dashboard provisioning config already exists — leaving it untouched.${NC}"
+    else
     cat > "$MONITORING_DIR/grafana_provisioning/dashboards/dashboards.yml" << EOF
 apiVersion: 1
 
@@ -199,6 +244,7 @@ providers:
       path: /var/lib/grafana/dashboards
       foldersFromFilesStructure: true
 EOF
+    fi
 
     # Create sample Grafana dashboard for Quantis API
     cat > "$GRAFANA_DIR/quantis_api_dashboard.json" << EOF
@@ -701,7 +747,7 @@ start_monitoring() {
     fi
 
     cd "$MONITORING_DIR"
-    docker-compose up -d
+    ${DOCKER_COMPOSE_CMD} up -d
 
     echo -e "${GREEN}Monitoring services started.${NC}"
     echo -e "Prometheus: http://localhost:$PROMETHEUS_PORT"
@@ -718,7 +764,7 @@ stop_monitoring() {
     fi
 
     cd "$MONITORING_DIR"
-    docker-compose down
+    ${DOCKER_COMPOSE_CMD} down
 
     echo -e "${GREEN}Monitoring services stopped.${NC}"
 }
@@ -733,7 +779,7 @@ check_status() {
     fi
 
     cd "$MONITORING_DIR"
-    docker-compose ps
+    ${DOCKER_COMPOSE_CMD} ps
 }
 
 # Function to backup monitoring configuration and data
@@ -778,7 +824,7 @@ restore_monitoring() {
     # Stop monitoring services if running
     if [ -f "$MONITORING_DIR/docker-compose.yml" ]; then
         cd "$MONITORING_DIR"
-        docker-compose down
+        ${DOCKER_COMPOSE_CMD} down
     fi
 
     # Backup current configuration
@@ -821,6 +867,11 @@ while [ "$1" != "" ]; do
         --backup )  COMMAND="backup"
                     ;;
         --restore ) COMMAND="restore"
+                    if [ $# -lt 2 ]; then
+                        echo -e "${RED}Error: --restore requires a backup file argument.${NC}"
+                        echo "Usage: ./monitoring_dashboard.sh --restore BACKUP_FILE"
+                        exit 1
+                    fi
                     shift
                     RESTORE_FILE="$1"
                     ;;

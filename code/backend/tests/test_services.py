@@ -6,9 +6,10 @@ prediction statistics, batch operations, and edge-case handling.
 from typing import Any
 
 import pytest
-from backend.domain.models import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+from backend.domain.models import Base
 
 # ---------------------------------------------------------------------------
 # In-memory SQLite DB fixture (isolated per test)

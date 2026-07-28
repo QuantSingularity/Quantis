@@ -452,7 +452,7 @@ class FinancialReportingService:
                 "smallest_transaction": None,
             }
             if not transactions:
-                return summary
+                return self._convert_decimals_to_strings(summary)
             amounts = [t.amount for t in transactions]
             summary["total_volume"] = sum(amounts)
             summary["average_amount"] = summary["total_volume"] / len(transactions)
@@ -477,7 +477,7 @@ class FinancialReportingService:
             return {"error": str(e)}
 
     def _convert_decimals_to_strings(self, obj: Any) -> Any:
-        """Convert Decimal objects to strings for JSON serialization"""
+        """Convert Decimal and Enum objects to JSON-serializable values."""
         if isinstance(obj, dict):
             return {
                 key: self._convert_decimals_to_strings(value)
@@ -487,6 +487,8 @@ class FinancialReportingService:
             return [self._convert_decimals_to_strings(item) for item in obj]
         elif isinstance(obj, Decimal):
             return str(obj)
+        elif isinstance(obj, Enum):
+            return obj.value
         else:
             return obj
 

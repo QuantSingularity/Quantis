@@ -2,18 +2,18 @@
 # unified_build.sh - Comprehensive build script for Quantis project
 #
 # This script automates the build process for all components of the Quantis project:
-# - API (Python backend)
-# - Models (Python ML models)
-# - Web Frontend (React/TypeScript)
-# - Mobile Frontend (React Native)
+# - API (Python backend, code/backend)
+# - quant_ml (Python ML library imported by the backend, code/quant_ml)
+# - Web Frontend (React/Vite, web-frontend)
+# - Mobile Frontend (Expo/React Native, mobile-frontend)
 #
 # Usage: ./unified_build.sh [options]
 # Options:
 #   --all                Build all components
 #   --api                Build only API
-#   --models             Build only models
+#   --models             Verify only the quant_ml library
 #   --web                Build only web frontend
-#   --mobile             Build only mobile frontend
+#   --mobile             Prepare only mobile frontend (install deps + typecheck)
 #   --clean              Clean build artifacts before building
 #   --prod               Build for production
 #   --dev                Build for development (default)
@@ -36,9 +36,13 @@ BUILD_API=false
 BUILD_MODELS=false
 BUILD_WEB=false
 BUILD_MOBILE=false
+BUILD_ALL=false
 CLEAN_BUILD=false
 ENV="development"
-PROJECT_ROOT=$(pwd)
+# Resolve the actual repository root instead of trusting the caller's
+# current directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Function to display help message
 show_help() {
@@ -49,9 +53,9 @@ show_help() {
     echo "Options:"
     echo "  --all                Build all components"
     echo "  --api                Build only API"
-    echo "  --models             Build only models"
+    echo "  --models             Verify only the quant_ml library"
     echo "  --web                Build only web frontend"
-    echo "  --mobile             Build only mobile frontend"
+    echo "  --mobile             Prepare only mobile frontend (install deps + typecheck)"
     echo "  --clean              Clean build artifacts before building"
     echo "  --prod               Build for production"
     echo "  --dev                Build for development (default)"
@@ -96,24 +100,24 @@ clean_build() {
 
     if $BUILD_API || $BUILD_ALL; then
         echo "Cleaning API build artifacts..."
-        rm -rf api/__pycache__ api/**/__pycache__
-        find api -name "*.pyc" -delete
+        find "${PROJECT_ROOT}/code/backend" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+        find "${PROJECT_ROOT}/code/backend" -name "*.pyc" -delete
     fi
 
     if $BUILD_MODELS || $BUILD_ALL; then
-        echo "Cleaning models build artifacts..."
-        rm -rf models/__pycache__ models/**/__pycache__
-        find models -name "*.pyc" -delete
+        echo "Cleaning quant_ml build artifacts..."
+        find "${PROJECT_ROOT}/code/quant_ml" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+        find "${PROJECT_ROOT}/code/quant_ml" -name "*.pyc" -delete
     fi
 
     if $BUILD_WEB || $BUILD_ALL; then
         echo "Cleaning web frontend build artifacts..."
-        rm -rf web-frontend/build web-frontend/node_modules/.cache
+        rm -rf "${PROJECT_ROOT}/web-frontend/build" "${PROJECT_ROOT}/web-frontend/node_modules/.cache"
     fi
 
     if $BUILD_MOBILE || $BUILD_ALL; then
         echo "Cleaning mobile frontend build artifacts..."
-        rm -rf mobile-frontend/build mobile-frontend/node_modules/.cache
+        rm -rf "${PROJECT_ROOT}/mobile-frontend/.expo" "${PROJECT_ROOT}/mobile-frontend/node_modules/.cache"
     fi
 
     echo -e "${GREEN}Build artifacts cleaned successfully.${NC}"
@@ -123,104 +127,130 @@ clean_build() {
 build_api() {
     echo -e "${BLUE}Building API...${NC}"
 
-    cd "$PROJECT_ROOT/api"
+    API_DIR="${PROJECT_ROOT}/code/backend"
+    if [ ! -d "${API_DIR}" ]; then
+        echo -e "${RED}Error: API directory not found at ${API_DIR}.${NC}"
+        exit 1
+    fi
 
-    # Create virtual environment if it doesn't exist
-    if [ ! -d "venv" ]; then
+    # The backend and quant_ml share a single virtual environment at the
+    # repository root (there is no separate api/venv directory).
+    VENV_DIR="${PROJECT_ROOT}/venv"
+    if [ ! -d "${VENV_DIR}" ]; then
         echo "Creating virtual environment..."
-        python3 -m venv venv
+        python3 -m venv "${VENV_DIR}"
     fi
 
-    # Activate virtual environment
-    source venv/bin/activate
+    # shellcheck source=/dev/null
+    source "${VENV_DIR}/bin/activate"
 
-    # Install dependencies
     echo "Installing API dependencies..."
-    pip install -r requirements.txt
+    pip install -q -r "${API_DIR}/requirements.txt"
 
-    # Run any build steps (like compiling protobuf, etc.)
-    if [ -f "setup.py" ]; then
-        echo "Running API setup..."
-        pip install -e .
-    fi
+    echo "Verifying the API package imports cleanly..."
+    (cd "${PROJECT_ROOT}" && PYTHONPATH="${PROJECT_ROOT}" python3 -c "from code.backend.core.app import app")
 
-    # Deactivate virtual environment
     deactivate
 
     echo -e "${GREEN}API built successfully.${NC}"
 }
 
-# Function to build models
+# Function to verify the quant_ml library
 build_models() {
-    echo -e "${BLUE}Building models...${NC}"
+    echo -e "${BLUE}Verifying quant_ml library...${NC}"
 
-    cd "$PROJECT_ROOT/models"
+    MODELS_DIR="${PROJECT_ROOT}/code/quant_ml"
+    if [ ! -d "${MODELS_DIR}" ]; then
+        echo -e "${RED}Error: quant_ml directory not found at ${MODELS_DIR}.${NC}"
+        exit 1
+    fi
 
-    # Create virtual environment if it doesn't exist
-    if [ ! -d "venv" ]; then
+    # quant_ml is a library imported by the backend, not a standalone
+    # service — it shares the backend's virtual environment rather than
+    # having its own venv/requirements.txt/setup.py.
+    VENV_DIR="${PROJECT_ROOT}/venv"
+    if [ ! -d "${VENV_DIR}" ]; then
         echo "Creating virtual environment..."
-        python3 -m venv venv
+        python3 -m venv "${VENV_DIR}"
     fi
 
-    # Activate virtual environment
-    source venv/bin/activate
+    # shellcheck source=/dev/null
+    source "${VENV_DIR}/bin/activate"
 
-    # Install dependencies
-    echo "Installing model dependencies..."
-    pip install -r requirements.txt
-
-    # Run any model-specific build steps
-    if [ -f "setup.py" ]; then
-        echo "Running models setup..."
-        pip install -e .
+    if [ -f "${MODELS_DIR}/requirements.txt" ]; then
+        echo "Installing quant_ml-specific dependencies..."
+        pip install -q -r "${MODELS_DIR}/requirements.txt"
+    else
+        # Ensure the backend's dependencies (which quant_ml relies on) are present.
+        pip install -q -r "${PROJECT_ROOT}/code/backend/requirements.txt"
     fi
 
-    # Deactivate virtual environment
+    echo "Verifying the quant_ml package imports cleanly..."
+    (cd "${PROJECT_ROOT}" && PYTHONPATH="${PROJECT_ROOT}" python3 -c "import code.quant_ml")
+
     deactivate
 
-    echo -e "${GREEN}Models built successfully.${NC}"
+    echo -e "${GREEN}quant_ml library verified successfully.${NC}"
 }
 
 # Function to build web frontend
 build_web_frontend() {
     echo -e "${BLUE}Building web frontend...${NC}"
 
-    cd "$PROJECT_ROOT/web-frontend"
-
-    # Install dependencies
-    echo "Installing web frontend dependencies..."
-    npm install
-
-    # Build the web frontend
-    echo "Building web frontend for $ENV environment..."
-    if [ "$ENV" = "production" ]; then
-        npm run build
-    else
-        npm run build:dev
+    WEB_DIR="${PROJECT_ROOT}/web-frontend"
+    if [ ! -d "${WEB_DIR}" ]; then
+        echo -e "${RED}Error: Web Frontend directory not found at ${WEB_DIR}.${NC}"
+        exit 1
     fi
+
+    (
+      cd "${WEB_DIR}"
+      echo "Installing web frontend dependencies..."
+      npm install --no-audit --no-fund
+
+      # The web frontend has a single Vite "build" script (no separate
+      # build:dev variant) — Vite already picks the right mode/env file
+      # based on NODE_ENV / --mode, so both dev and prod builds use it.
+      echo "Building web frontend for $ENV environment..."
+      if [ "$ENV" = "production" ]; then
+        npm run build
+      else
+        npx vite build --mode development
+      fi
+    )
 
     echo -e "${GREEN}Web frontend built successfully.${NC}"
 }
 
-# Function to build mobile frontend
+# Function to prepare the mobile frontend
 build_mobile_frontend() {
-    echo -e "${BLUE}Building mobile frontend...${NC}"
+    echo -e "${BLUE}Preparing mobile frontend...${NC}"
 
-    cd "$PROJECT_ROOT/mobile-frontend"
-
-    # Install dependencies
-    echo "Installing mobile frontend dependencies..."
-    npm install
-
-    # Build the mobile frontend
-    echo "Building mobile frontend for $ENV environment..."
-    if [ "$ENV" = "production" ]; then
-        npm run build
-    else
-        npm run build:dev
+    MOBILE_DIR="${PROJECT_ROOT}/mobile-frontend"
+    if [ ! -d "${MOBILE_DIR}" ]; then
+        echo -e "${RED}Error: Mobile Frontend directory not found at ${MOBILE_DIR}.${NC}"
+        exit 1
     fi
 
-    echo -e "${GREEN}Mobile frontend built successfully.${NC}"
+    (
+      cd "${MOBILE_DIR}"
+      echo "Installing mobile frontend dependencies..."
+      npm install --no-audit --no-fund
+
+      echo "Type-checking the mobile frontend..."
+      npm run typecheck
+
+      if [ "$ENV" = "production" ]; then
+        echo "Exporting a static web bundle (npx expo export --platform web)..."
+        npx expo export --platform web
+        echo "Note: native iOS/Android binaries are produced via EAS Build, not"
+        echo "by this script — see https://docs.expo.dev/build/introduction/"
+      else
+        echo "Mobile frontend is ready. Start it with: npm start"
+      fi
+    )
+
+    echo -e "${GREEN}Mobile frontend prepared successfully.${NC}"
 }
 
 # Parse command line arguments
@@ -262,6 +292,7 @@ done
 # Main execution
 echo -e "${BLUE}Starting Quantis unified build process...${NC}"
 echo -e "Environment: ${YELLOW}$ENV${NC}"
+echo -e "Repository root: ${PROJECT_ROOT}"
 
 # Check dependencies
 check_dependencies

@@ -34,7 +34,11 @@ GEN_API=false
 GEN_CODE=false
 GEN_README=false
 GEN_GUIDES=false
-PROJECT_ROOT=$(pwd)
+GEN_ALL=false
+# Resolve the actual repository root instead of trusting the caller's
+# current directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OUTPUT_DIR="$PROJECT_ROOT/docs"
 
 # Function to display help message
@@ -79,7 +83,7 @@ check_dependencies() {
             fi
         fi
 
-        if [ -d "$PROJECT_ROOT/api" ] || [ -d "$PROJECT_ROOT/models" ]; then
+        if [ -d "$PROJECT_ROOT/code/backend" ] || [ -d "$PROJECT_ROOT/code/quant_ml" ]; then
             if ! command_exists sphinx-build; then
                 echo -e "${YELLOW}Warning: sphinx is not installed. Installing...${NC}"
                 pip install sphinx sphinx_rtd_theme
@@ -91,7 +95,13 @@ check_dependencies() {
         if ! command_exists pandoc; then
             echo -e "${YELLOW}Warning: pandoc is not installed. Installing...${NC}"
             if command_exists apt-get; then
-                sudo apt-get update && sudo apt-get install -y pandoc
+                if sudo -n true 2>/dev/null; then
+                    sudo apt-get update && sudo apt-get install -y pandoc
+                else
+                    echo -e "${RED}Error: pandoc is missing and passwordless sudo is not available.${NC}"
+                    echo -e "${RED}Install it manually with: sudo apt-get install -y pandoc${NC}"
+                    exit 1
+                fi
             elif command_exists brew; then
                 brew install pandoc
             else
@@ -121,8 +131,8 @@ prepare_output_dir() {
 generate_api_docs() {
     echo -e "${BLUE}Generating API documentation...${NC}"
 
-    if [ -d "$PROJECT_ROOT/api" ]; then
-        cd "$PROJECT_ROOT/api"
+    if [ -d "$PROJECT_ROOT/code/backend" ]; then
+        cd "$PROJECT_ROOT/code/backend"
 
         # Look for OpenAPI/Swagger files
         SWAGGER_FILES=$(find . -name "swagger.yaml" -o -name "swagger.json" -o -name "openapi.yaml" -o -name "openapi.json")
@@ -136,48 +146,36 @@ generate_api_docs() {
 
                 # Create a temporary script to extract OpenAPI schema
                 cat > extract_openapi.py << EOF
-from fastapi.openapi.utils import get_openapi
-import sys
 import json
-import importlib.util
+import sys
 
-# Try to import the main FastAPI app
-# This assumes the app is in app.py, main.py, or api.py
-for module_name in ["app", "main", "api"]:
-    try:
-        spec = importlib.util.spec_from_file_location(module_name, f"{module_name}.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+sys.path.insert(0, "$PROJECT_ROOT")
 
-        # Look for FastAPI app instance
-        for attr_name in dir(module):
-            attr = getattr(module, attr_name)
-            if str(type(attr)).endswith("fastapi.applications.FastAPI'>"):
-                app = attr
+from fastapi.openapi.utils import get_openapi
 
-                # Generate OpenAPI schema
-                openapi_schema = get_openapi(
-                    title="Quantis API",
-                    version="1.0.0",
-                    description="Quantis API Documentation",
-                    routes=app.routes,
-                )
+# The FastAPI app instance lives at code.backend.core.app, not a flat
+# app.py/main.py/api.py in this directory.
+try:
+    from code.backend.core.app import app
+except Exception as e:
+    print(f"Error importing code.backend.core.app: {e}")
+    sys.exit(1)
 
-                # Write to file
-                with open("openapi.json", "w") as f:
-                    json.dump(openapi_schema, f, indent=2)
+openapi_schema = get_openapi(
+    title="Quantis API",
+    version="1.0.0",
+    description="Quantis API Documentation",
+    routes=app.routes,
+)
 
-                print("OpenAPI schema generated successfully.")
-                sys.exit(0)
-    except Exception as e:
-        print(f"Error processing {module_name}.py: {e}")
+with open("openapi.json", "w") as f:
+    json.dump(openapi_schema, f, indent=2)
 
-print("Could not find FastAPI app instance.")
-sys.exit(1)
+print("OpenAPI schema generated successfully.")
 EOF
 
                 # Run the script to extract OpenAPI schema
-                python extract_openapi.py
+                PYTHONPATH="$PROJECT_ROOT" python3 extract_openapi.py
                 rm extract_openapi.py
 
                 SWAGGER_FILES="openapi.json"
@@ -215,7 +213,9 @@ generate_code_docs() {
         cd "$PROJECT_ROOT/web-frontend"
 
         # Create JSDoc configuration if it doesn't exist
+        JSDOC_CONFIG_CREATED=false
         if [ ! -f "jsdoc.json" ]; then
+            JSDOC_CONFIG_CREATED=true
             cat > jsdoc.json << EOF
 {
   "source": {
@@ -225,7 +225,7 @@ generate_code_docs() {
   },
   "plugins": ["plugins/markdown"],
   "opts": {
-    "destination": "../docs/code/web-frontend",
+    "destination": "$OUTPUT_DIR/code/web-frontend",
     "recurse": true,
     "readme": "README.md"
   }
@@ -235,6 +235,9 @@ EOF
 
         # Run JSDoc
         jsdoc -c jsdoc.json
+        if $JSDOC_CONFIG_CREATED; then
+            rm -f jsdoc.json
+        fi
     fi
 
     if [ -d "$PROJECT_ROOT/mobile-frontend" ]; then
@@ -242,7 +245,9 @@ EOF
         cd "$PROJECT_ROOT/mobile-frontend"
 
         # Create JSDoc configuration if it doesn't exist
+        JSDOC_CONFIG_CREATED=false
         if [ ! -f "jsdoc.json" ]; then
+            JSDOC_CONFIG_CREATED=true
             cat > jsdoc.json << EOF
 {
   "source": {
@@ -252,7 +257,7 @@ EOF
   },
   "plugins": ["plugins/markdown"],
   "opts": {
-    "destination": "../docs/code/mobile-frontend",
+    "destination": "$OUTPUT_DIR/code/mobile-frontend",
     "recurse": true,
     "readme": "README.md"
   }
@@ -262,10 +267,13 @@ EOF
 
         # Run JSDoc
         jsdoc -c jsdoc.json
+        if $JSDOC_CONFIG_CREATED; then
+            rm -f jsdoc.json
+        fi
     fi
 
     # Generate Python documentation using Sphinx
-    if [ -d "$PROJECT_ROOT/api" ] || [ -d "$PROJECT_ROOT/models" ]; then
+    if [ -d "$PROJECT_ROOT/code/backend" ] || [ -d "$PROJECT_ROOT/code/quant_ml" ]; then
         echo "Generating Python code documentation..."
 
         # Create Sphinx documentation directory
@@ -286,18 +294,18 @@ API Modules
 .. toctree::
    :maxdepth: 4
 
-   api
-   models
+   backend
+   quant_ml
 EOF
 
-        # Generate API module documentation
-        if [ -d "$PROJECT_ROOT/api" ]; then
-            sphinx-apidoc -o source/api "$PROJECT_ROOT/api" -H "API" -M -e -f
+        # Generate backend module documentation
+        if [ -d "$PROJECT_ROOT/code/backend" ]; then
+            sphinx-apidoc -o source/backend "$PROJECT_ROOT/code/backend" -H "Backend API" -M -e -f
         fi
 
-        # Generate Models module documentation
-        if [ -d "$PROJECT_ROOT/models" ]; then
-            sphinx-apidoc -o source/models "$PROJECT_ROOT/models" -H "Models" -M -e -f
+        # Generate quant_ml module documentation
+        if [ -d "$PROJECT_ROOT/code/quant_ml" ]; then
+            sphinx-apidoc -o source/quant_ml "$PROJECT_ROOT/code/quant_ml" -H "Quant ML" -M -e -f
         fi
 
         # Build HTML documentation
@@ -402,14 +410,24 @@ EOF
     # Copy main README to output directory
     cp "$PROJECT_ROOT/README.md" "$OUTPUT_DIR/readme/"
 
-    # Generate component-specific READMEs
+    # Generate component-specific READMEs. Component labels don't match
+    # directory names 1:1 in this repository (the API lives at
+    # code/backend, models at code/quant_ml, monitoring config at
+    # infrastructure/monitoring), so map each label to its real path.
     for component in api models web-frontend mobile-frontend infrastructure monitoring; do
-        if [ -d "$PROJECT_ROOT/$component" ] && [ ! -f "$PROJECT_ROOT/$component/README.md" ]; then
+        case $component in
+            api)            component_dir="$PROJECT_ROOT/code/backend" ;;
+            models)         component_dir="$PROJECT_ROOT/code/quant_ml" ;;
+            monitoring)     component_dir="$PROJECT_ROOT/infrastructure/monitoring" ;;
+            *)              component_dir="$PROJECT_ROOT/$component" ;;
+        esac
+
+        if [ -d "$component_dir" ] && [ ! -f "$component_dir/README.md" ]; then
             echo "Creating README.md for $component..."
 
             case $component in
                 api)
-                    cat > "$PROJECT_ROOT/$component/README.md" << EOF
+                    cat > "$component_dir/README.md" << EOF
 # Quantis API
 
 This directory contains the backend API for the Quantis platform.
@@ -420,55 +438,51 @@ The API provides endpoints for data retrieval, model execution, and trading oper
 
 ## Getting Started
 
-1. Create a virtual environment: \`python -m venv venv\`
+1. Create a virtual environment: \`python3 -m venv venv\` (from the repository root)
 2. Activate the virtual environment: \`source venv/bin/activate\`
-3. Install dependencies: \`pip install -r requirements.txt\`
-4. Run the API: \`python app.py\`
+3. Install dependencies: \`pip install -r code/backend/requirements.txt\`
+4. Run the API (from the repository root): \`uvicorn code.backend.core.app:app --reload\`
 
 ## API Documentation
 
-API documentation is available at \`/docs\` when the API is running.
+Interactive API documentation is available at \`/docs\` when the API is running.
 
 ## Directory Structure
 
-- \`app.py\`: Main application entry point
-- \`routes/\`: API route definitions
-- \`models/\`: Data models
+- \`core/app.py\`: Main FastAPI application instance
+- \`endpoints/\`: API route definitions
+- \`domain/\`: Data models and schemas
 - \`services/\`: Business logic
-- \`utils/\`: Utility functions
+- \`auth/\`, \`middleware/\`: Authentication and request middleware
 EOF
                     ;;
                 models)
-                    cat > "$PROJECT_ROOT/$component/README.md" << EOF
-# Quantis Models
+                    cat > "$component_dir/README.md" << EOF
+# Quantis quant_ml
 
-This directory contains the machine learning models for the Quantis platform.
+This directory contains the machine learning library used by the Quantis API.
 
 ## Overview
 
-The models provide predictive analytics for trading strategies and portfolio optimization.
+quant_ml provides predictive analytics for trading strategies and portfolio optimization,
+and is imported directly by the backend (code/backend) — it is not a standalone service
+and shares the backend's virtual environment and dependencies.
 
 ## Getting Started
 
-1. Create a virtual environment: \`python -m venv venv\`
-2. Activate the virtual environment: \`source venv/bin/activate\`
-3. Install dependencies: \`pip install -r requirements.txt\`
-4. Run model training: \`python train.py\`
+From the repository root, with the backend virtual environment activated:
 
-## Directory Structure
-
-- \`train.py\`: Model training script
-- \`predict.py\`: Model prediction script
-- \`models/\`: Model definitions
-- \`data/\`: Data processing utilities
-- \`evaluation/\`: Model evaluation utilities
+\`\`\`bash
+source venv/bin/activate
+python3 -c "import code.quant_ml"
+\`\`\`
 EOF
                     ;;
                 web-frontend)
-                    cat > "$PROJECT_ROOT/$component/README.md" << EOF
+                    cat > "$component_dir/README.md" << EOF
 # Quantis Web Frontend
 
-This directory contains the web frontend for the Quantis platform.
+This directory contains the web frontend for the Quantis platform (React + Vite + MUI).
 
 ## Overview
 
@@ -477,25 +491,25 @@ The web frontend provides a user interface for interacting with the Quantis plat
 ## Getting Started
 
 1. Install dependencies: \`npm install\`
-2. Run the development server: \`npm start\`
+2. Run the development server: \`npm run dev\`
 3. Build for production: \`npm run build\`
 
 ## Directory Structure
 
 - \`src/\`: Source code
-  - \`components/\`: React components
-  - \`pages/\`: Page definitions
-  - \`services/\`: API client services
-  - \`store/\`: Redux store
-  - \`utils/\`: Utility functions
+  - \`components/\`: Shared UI components
+  - \`pages/\`: Route-level page components
+  - \`api/\`: API client modules
+  - \`context/\`: React context providers (auth, theme)
+  - \`theme/\`: Design tokens and MUI theme
 - \`public/\`: Static assets
 EOF
                     ;;
                 mobile-frontend)
-                    cat > "$PROJECT_ROOT/$component/README.md" << EOF
+                    cat > "$component_dir/README.md" << EOF
 # Quantis Mobile Frontend
 
-This directory contains the mobile frontend for the Quantis platform.
+This directory contains the mobile frontend for the Quantis platform (Expo + React Native).
 
 ## Overview
 
@@ -504,22 +518,25 @@ The mobile frontend provides a mobile user interface for interacting with the Qu
 ## Getting Started
 
 1. Install dependencies: \`npm install\`
-2. Run the development server: \`npm start\`
-3. Build for production: \`npm run build\`
+2. Run the development server: \`npm start\` (then press \`a\`/\`i\`/\`w\` in the Expo CLI)
+
+Expo apps do not have a local \`npm run build\` step. Native binaries are produced via
+EAS Build (\`npx eas-cli build --platform all\`); a static web export can be produced with
+\`npx expo export --platform web\`.
 
 ## Directory Structure
 
 - \`src/\`: Source code
-  - \`components/\`: React components
-  - \`screens/\`: Screen definitions
-  - \`services/\`: API client services
-  - \`store/\`: Redux store
-  - \`utils/\`: Utility functions
+  - \`components/\`: Shared UI components
+  - \`screens/\`: Screen components
+  - \`navigation/\`: React Navigation stacks/tabs
+  - \`api/\`: API client modules
+  - \`context/\`: React context providers (auth, theme)
 - \`assets/\`: Static assets
 EOF
                     ;;
                 infrastructure)
-                    cat > "$PROJECT_ROOT/$component/README.md" << EOF
+                    cat > "$component_dir/README.md" << EOF
 # Quantis Infrastructure
 
 This directory contains the infrastructure configuration for the Quantis platform.
@@ -530,7 +547,7 @@ The infrastructure configuration defines the deployment and operation of the Qua
 
 ## Getting Started
 
-1. Install dependencies: \`terraform init\`
+1. Initialize Terraform: \`cd terraform && terraform init\`
 2. Plan deployment: \`terraform plan\`
 3. Apply deployment: \`terraform apply\`
 
@@ -538,12 +555,13 @@ The infrastructure configuration defines the deployment and operation of the Qua
 
 - \`terraform/\`: Terraform configuration
 - \`kubernetes/\`: Kubernetes manifests
-- \`docker/\`: Docker configuration
-- \`scripts/\`: Deployment scripts
+- \`ansible/\`: Ansible playbooks
+- \`monitoring/\`: Prometheus/Grafana configuration
+- \`mysql/\`: Database configuration
 EOF
                     ;;
                 monitoring)
-                    cat > "$PROJECT_ROOT/$component/README.md" << EOF
+                    cat > "$component_dir/README.md" << EOF
 # Quantis Monitoring
 
 This directory contains the monitoring configuration for the Quantis platform.
@@ -554,24 +572,26 @@ The monitoring configuration defines the metrics collection, visualization, and 
 
 ## Getting Started
 
-1. Start monitoring stack: \`docker-compose up -d\`
+1. Start the monitoring stack: \`docker compose up -d\` (or \`docker-compose up -d\` on older installs)
 2. Access Prometheus: \`http://localhost:9090\`
 3. Access Grafana: \`http://localhost:3000\`
 
 ## Directory Structure
 
 - \`prometheus.yml\`: Prometheus configuration
+- \`alert_rules.yml\`: Alerting rules
+- \`alertmanager.yml\`: Alertmanager configuration
 - \`grafana_dashboards/\`: Grafana dashboard definitions
-- \`alerting_rules.yml\`: Alerting rules
+- \`grafana_provisioning/\`: Grafana datasource/dashboard provisioning
 EOF
                     ;;
             esac
 
             # Copy component README to output directory
-            cp "$PROJECT_ROOT/$component/README.md" "$OUTPUT_DIR/readme/$component.md"
-        elif [ -f "$PROJECT_ROOT/$component/README.md" ]; then
+            cp "$component_dir/README.md" "$OUTPUT_DIR/readme/$component.md"
+        elif [ -f "$component_dir/README.md" ]; then
             # Copy existing component README to output directory
-            cp "$PROJECT_ROOT/$component/README.md" "$OUTPUT_DIR/readme/$component.md"
+            cp "$component_dir/README.md" "$OUTPUT_DIR/readme/$component.md"
         fi
     done
 
@@ -647,9 +667,10 @@ Run the application startup script:
 \`\`\`
 
 This script will:
-- Start the API server
-- Start the model service
-- Wait for backend services to initialize
+- Start the API server (which imports the quant_ml library directly — there
+  is no separate standalone model service)
+- Start the web frontend
+- Wait for the API to become healthy before reporting success
 
 ### 4. Access the Application
 
@@ -668,12 +689,13 @@ Check the following:
 - Verify database connection settings in \`.env\`
 - Check API logs for specific errors
 
-#### Models Service Won't Start
+#### quant_ml Import Errors
 
 Check the following:
-- Ensure Python dependencies are installed
-- Verify model files are present
-- Check model service logs for specific errors
+- Ensure Python dependencies are installed in the shared virtual environment
+- Verify the \`code/quant_ml\` package imports cleanly: \`python3 -c "import code.quant_ml"\`
+- Check the API server logs — quant_ml is imported directly by the backend,
+  so import errors surface there rather than in a separate service log
 
 #### Frontend Won't Load
 
@@ -1109,7 +1131,7 @@ EOF
 
         for guide in "$OUTPUT_DIR/guides"/*.md; do
             basename=$(basename "$guide" .md)
-            pandoc "$guide" -o "$OUTPUT_DIR/guides/$basename.html" --standalone --metadata title="Quantis - $(echo $basename | sed 's/_/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')"
+            pandoc "$guide" -o "$OUTPUT_DIR/guides/$basename.html" --standalone --metadata title="Quantis - $(echo "$basename" | sed 's/_/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')"
         done
     fi
 

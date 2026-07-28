@@ -182,6 +182,29 @@ class PasswordChange(BaseSchema):
         return v
 
 
+class PasswordResetRequest(BaseSchema):
+    """Schema for requesting a password reset email"""
+
+    email: EmailStr = Field(..., description="Account email address")
+
+
+class PasswordResetConfirm(BaseSchema):
+    """Schema for confirming a password reset with a token"""
+
+    token: str = Field(..., description="Password reset token")
+    new_password: constr(min_length=12, max_length=128) = Field(
+        ...,
+        description="New password (minimum 12 characters, strong complexity required)",
+    )
+    confirm_password: str = Field(..., description="New password confirmation")
+
+    @validator("confirm_password")
+    def passwords_match(cls: Any, v: Any, values: Any) -> Any:
+        if "new_password" in values and v != values["new_password"]:
+            raise ValueError("Passwords do not match")
+        return v
+
+
 class Token(BaseSchema):
     """Schema for authentication token"""
 
