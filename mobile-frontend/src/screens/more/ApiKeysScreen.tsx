@@ -121,7 +121,7 @@ const ApiKeysScreen: React.FC<Props> = () => {
             {newKey ? (
               <View>
                 <HelperText type="info" visible>
-                  Copy this key now — you won&apos;t be able to see it again.
+                  Copy this key now - you won&apos;t be able to see it again.
                 </HelperText>
                 <TextInput
                   value={newKey}

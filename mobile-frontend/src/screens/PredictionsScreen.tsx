@@ -210,7 +210,7 @@ const PredictionsScreen: React.FC<Props> = () => {
                 variant="bodySmall"
                 style={{ color: theme.colors.onSurfaceVariant }}
               >
-                {p.created_at ? new Date(p.created_at).toLocaleString() : "—"}
+                {p.created_at ? new Date(p.created_at).toLocaleString() : "-"}
               </Text>
             </Card.Content>
           </Card>

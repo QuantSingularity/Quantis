@@ -27,6 +27,28 @@ class ModelService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    @staticmethod
+    def _coerce_model_type(model_type: Any) -> "models.ModelType":
+        """Coerce a model_type input into a ModelType enum member.
+
+        Accepts a ModelType instance, an enum *value* string (e.g. "lstm",
+        as returned by GET /models/models/types and sent by the frontends),
+        or an enum *name* string (e.g. "LSTM"). Raises ValueError with a
+        helpful message listing valid values if the input doesn't match.
+        """
+        if isinstance(model_type, models.ModelType):
+            return model_type
+        if isinstance(model_type, str):
+            try:
+                return models.ModelType(model_type.lower())
+            except ValueError:
+                try:
+                    return models.ModelType[model_type.upper()]
+                except KeyError:
+                    pass
+        valid = ", ".join(m.value for m in models.ModelType)
+        raise ValueError(f"Unsupported model type '{model_type}'. Valid types: {valid}")
+
     def create_model_record(
         self,
         name: str,
@@ -55,7 +77,7 @@ class ModelService:
         model = models.Model(
             name=name,
             description=description,
-            model_type=model_type,
+            model_type=self._coerce_model_type(model_type),
             owner_id=owner_id,
             dataset_id=dataset_id,
             hyperparameters=hyperparameters or {},
@@ -122,6 +144,8 @@ class ModelService:
         model = self.get_model_by_id(model_id)
         if not model:
             return None
+        if "model_type" in kwargs and kwargs["model_type"] is not None:
+            kwargs["model_type"] = self._coerce_model_type(kwargs["model_type"])
         for key, value in kwargs.items():
             if hasattr(model, key) and key not in [
                 "id",

@@ -110,7 +110,7 @@ const Register = () => {
           Create your account
         </Typography>
         <Typography variant="body2" color="text.secondary" textAlign="center">
-          Start forecasting in minutes — no credit card required
+          Start forecasting in minutes - no credit card required
         </Typography>
       </Stack>
 

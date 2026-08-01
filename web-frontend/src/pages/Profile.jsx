@@ -526,7 +526,7 @@ const ApiKeysTab = () => {
           {newKey ? (
             <Stack spacing={2}>
               <Alert severity="warning">
-                Copy this key now — you won&apos;t be able to see it again.
+                Copy this key now - you won&apos;t be able to see it again.
               </Alert>
               <Stack direction="row" spacing={1} alignItems="center">
                 <TextField

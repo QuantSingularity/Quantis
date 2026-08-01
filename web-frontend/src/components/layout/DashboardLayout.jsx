@@ -82,7 +82,7 @@ const DashboardLayout = () => {
           );
         }
       } catch {
-        // Non-critical — silently ignore
+        // Non-critical - silently ignore
       }
     };
     loadUnread();
@@ -217,14 +217,7 @@ const DashboardLayout = () => {
           minWidth: 0,
         }}
       >
-        <AppBar
-          position="sticky"
-          elevation={0}
-          sx={{
-            width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-            ml: { md: `${DRAWER_WIDTH}px` },
-          }}
-        >
+        <AppBar position="sticky" elevation={0}>
           <Toolbar sx={{ gap: 1 }}>
             <IconButton
               edge="start"

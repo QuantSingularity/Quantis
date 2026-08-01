@@ -101,7 +101,7 @@ async def optional_auth(
     api_key: Optional[str] = Header(None, alias="X-API-Key"),
     db: Session = Depends(get_db),
 ):
-    """Optional authentication — returns user info if authenticated, None otherwise."""
+    """Optional authentication - returns user info if authenticated, None otherwise."""
     if not api_key:
         return None
     try:
@@ -184,13 +184,13 @@ public_rate_limit = IPRateLimiter(30)
 
 
 class ApiKeyManager:
-    """Legacy compatibility class — now uses database backend."""
+    """Legacy compatibility class - now uses database backend."""
 
     @staticmethod
     def create_api_key(
         user_id: str, role: str = Roles.USER, expiry_days: int = 30
     ) -> str:
-        """Create a new API key — legacy compatibility method."""
+        """Create a new API key - legacy compatibility method."""
         db = SessionLocal()
         try:
             user_service = UserService(db)
@@ -205,7 +205,7 @@ class ApiKeyManager:
 
     @staticmethod
     def validate_api_key(api_key: str) -> Dict:
-        """Validate API key — legacy compatibility method."""
+        """Validate API key - legacy compatibility method."""
         db = SessionLocal()
         try:
             user_service = UserService(db)
@@ -220,7 +220,7 @@ class ApiKeyManager:
 
     @staticmethod
     def revoke_api_key(api_key: str) -> bool:
-        """Revoke an API key — legacy compatibility method."""
+        """Revoke an API key - legacy compatibility method."""
         db = SessionLocal()
         try:
             user_service = UserService(db)
@@ -230,7 +230,7 @@ class ApiKeyManager:
 
     @staticmethod
     def get_user_keys(user_id: str) -> List[str]:
-        """Get all API keys for a user — legacy compatibility method."""
+        """Get all API keys for a user - legacy compatibility method."""
         db = SessionLocal()
         try:
             user_service = UserService(db)

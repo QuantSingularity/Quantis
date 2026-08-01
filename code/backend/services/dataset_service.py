@@ -143,7 +143,7 @@ class DatasetService:
         self, file_path: str, encryption_manager: EncryptionManager
     ) -> Optional[pd.DataFrame]:
         """Load dataset data as pandas DataFrame, with decryption if enabled"""
-        if not os.path.exists(file_path):
+        if not file_path or not os.path.exists(file_path):
             return None
         tmp_file_path = file_path
         try:

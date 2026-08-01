@@ -137,7 +137,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <List.Item
                   title={`Model #${p.model_id}`}
                   description={
-                    p.created_at ? new Date(p.created_at).toLocaleString() : "—"
+                    p.created_at ? new Date(p.created_at).toLocaleString() : "-"
                   }
                   right={() => <StatusChip status={p.status || "completed"} />}
                   style={styles.listItem}

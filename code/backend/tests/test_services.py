@@ -491,7 +491,7 @@ def test_api_key_static_methods() -> None:
 
 
 def test_role_creation_idempotent(db: Any) -> None:
-    """_get_or_create_role is idempotent — two calls return same role."""
+    """_get_or_create_role is idempotent - two calls return same role."""
     from backend.services.user_service import UserService
 
     svc = UserService(db)

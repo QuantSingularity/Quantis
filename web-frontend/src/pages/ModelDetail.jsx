@@ -18,7 +18,7 @@ import LoadingScreen from "../components/common/LoadingScreen";
 import StatusChip from "../components/common/StatusChip";
 
 const formatMetric = (value) => {
-  if (typeof value !== "number") return value ?? "—";
+  if (typeof value !== "number") return value ?? "-";
   return Math.abs(value) < 1 ? value.toFixed(4) : value.toFixed(2);
 };
 
@@ -195,7 +195,7 @@ const ModelDetail = () => {
                     Target column
                   </Typography>
                   <Typography variant="body2">
-                    {model?.target_column || "—"}
+                    {model?.target_column || "-"}
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">

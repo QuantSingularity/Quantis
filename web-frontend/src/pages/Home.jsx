@@ -106,7 +106,7 @@ const Home = () => {
             sx={{ maxWidth: 640, fontWeight: 400 }}
           >
             Quantis is the platform quant and data teams use to manage datasets,
-            train forecasting models, and serve predictions — all with the audit
+            train forecasting models, and serve predictions - all with the audit
             trail and compliance controls finance requires.
           </Typography>
           <Stack
@@ -276,7 +276,7 @@ const Home = () => {
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
             Role-based access control, multi-factor authentication, scoped API
-            keys, and a complete audit log ship with every Quantis workspace —
+            keys, and a complete audit log ship with every Quantis workspace -
             not as an add-on.
           </Typography>
           <Button

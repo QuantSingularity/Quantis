@@ -19,7 +19,7 @@ router = APIRouter()
 
 class ModelCreate(BaseModel):
     name: str
-    description: str
+    description: Optional[str] = None
     model_type: str
     dataset_id: int
     hyperparameters: Optional[dict] = {}
@@ -28,7 +28,7 @@ class ModelCreate(BaseModel):
 class ModelResponse(BaseModel):
     id: int
     name: str
-    description: str
+    description: Optional[str] = None
     model_type: str
     owner_id: int
     owner_username: str
@@ -147,6 +147,98 @@ async def get_models(
     return result
 
 
+@router.get("/models/compare")
+async def compare_models(
+    model_ids: str = Query(..., description="Comma-separated list of model IDs"),
+    current_user: dict = Depends(validate_api_key),
+    db: Session = Depends(get_db),
+):
+    """Compare multiple models."""
+    model_service = ModelService(db)
+    try:
+        model_id_list = [int(id.strip()) for id in model_ids.split(",")]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid model IDs format")
+    if len(model_id_list) > 10:
+        raise HTTPException(
+            status_code=400, detail="Cannot compare more than 10 models at once"
+        )
+    comparison_data = []
+    for model_id in model_id_list:
+        model = model_service.get_model_by_id(model_id)
+        if not model:
+            continue
+        if (
+            current_user["role"] not in ["admin", "readonly"]
+            and model.owner_id != current_user["user_id"]
+        ):
+            continue
+        comparison_data.append(
+            {
+                "id": model.id,
+                "name": model.name,
+                "model_type": model.model_type,
+                "status": model.status,
+                "metrics": model.metrics,
+                "trained_at": (
+                    model.trained_at.isoformat() if model.trained_at else None
+                ),
+            }
+        )
+    return {"models": comparison_data, "comparison_count": len(comparison_data)}
+
+
+@router.get("/models/types")
+async def get_model_types(current_user: dict = Depends(readonly_or_above)):
+    """Get available model types and their descriptions."""
+    return {
+        "model_types": [
+            {
+                "type": "tft",
+                "name": "Temporal Fusion Transformer",
+                "description": "Advanced transformer model for time series forecasting with attention mechanisms",
+                "suitable_for": ["time_series", "forecasting", "multivariate"],
+            },
+            {
+                "type": "lstm",
+                "name": "Long Short-Term Memory",
+                "description": "Recurrent neural network for sequence modeling and time series prediction",
+                "suitable_for": ["time_series", "sequence_modeling", "forecasting"],
+            },
+            {
+                "type": "arima",
+                "name": "AutoRegressive Integrated Moving Average",
+                "description": "Statistical model for time series analysis and forecasting",
+                "suitable_for": ["time_series", "univariate", "statistical_analysis"],
+            },
+            {
+                "type": "linear",
+                "name": "Linear Regression",
+                "description": "Simple linear model for regression tasks",
+                "suitable_for": ["regression", "baseline", "interpretable"],
+            },
+            {
+                "type": "random_forest",
+                "name": "Random Forest",
+                "description": "Ensemble method using multiple decision trees",
+                "suitable_for": ["regression", "classification", "feature_importance"],
+            },
+            {
+                "type": "xgboost",
+                "name": "XGBoost",
+                "description": "Gradient boosting framework for structured data",
+                "suitable_for": ["regression", "classification", "high_performance"],
+            },
+        ]
+    }
+
+
+# NOTE: static-path routes above (`/models/compare`, `/models/types`) MUST be
+# declared before the `/models/{model_id}` dynamic route below. FastAPI/Starlette
+# matches routes in declaration order, so if a `{model_id}` route were declared
+# first, requests like GET /models/types would incorrectly match it with
+# model_id="types" and fail int parsing. (This previously broke the web and
+# mobile frontends' "model types" and "compare models" features.)
 @router.get("/models/{model_id}", response_model=ModelResponse)
 async def get_model(
     model_id: int,
@@ -197,13 +289,16 @@ async def update_model(
         raise HTTPException(status_code=404, detail="Model not found")
     if current_user["role"] != "admin" and model.owner_id != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
-    updated_model = model_service.update_model(
-        model_id,
-        name=model_update.name,
-        description=model_update.description,
-        model_type=model_update.model_type,
-        hyperparameters=model_update.hyperparameters,
-    )
+    try:
+        updated_model = model_service.update_model(
+            model_id,
+            name=model_update.name,
+            description=model_update.description,
+            model_type=model_update.model_type,
+            hyperparameters=model_update.hyperparameters,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not updated_model:
         raise HTTPException(status_code=500, detail="Failed to update model")
     dataset_service = DatasetService(db)
@@ -322,89 +417,3 @@ async def get_model_metrics(
             status_code=404, detail="No metrics available for this model"
         )
     return ModelMetrics(**model.metrics)
-
-
-@router.get("/models/compare")
-async def compare_models(
-    model_ids: str = Query(..., description="Comma-separated list of model IDs"),
-    current_user: dict = Depends(validate_api_key),
-    db: Session = Depends(get_db),
-):
-    """Compare multiple models."""
-    model_service = ModelService(db)
-    try:
-        model_id_list = [int(id.strip()) for id in model_ids.split(",")]
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid model IDs format")
-    if len(model_id_list) > 10:
-        raise HTTPException(
-            status_code=400, detail="Cannot compare more than 10 models at once"
-        )
-    comparison_data = []
-    for model_id in model_id_list:
-        model = model_service.get_model_by_id(model_id)
-        if not model:
-            continue
-        if (
-            current_user["role"] not in ["admin", "readonly"]
-            and model.owner_id != current_user["user_id"]
-        ):
-            continue
-        comparison_data.append(
-            {
-                "id": model.id,
-                "name": model.name,
-                "model_type": model.model_type,
-                "status": model.status,
-                "metrics": model.metrics,
-                "trained_at": (
-                    model.trained_at.isoformat() if model.trained_at else None
-                ),
-            }
-        )
-    return {"models": comparison_data, "comparison_count": len(comparison_data)}
-
-
-@router.get("/models/types")
-async def get_model_types(current_user: dict = Depends(readonly_or_above)):
-    """Get available model types and their descriptions."""
-    return {
-        "model_types": [
-            {
-                "type": "tft",
-                "name": "Temporal Fusion Transformer",
-                "description": "Advanced transformer model for time series forecasting with attention mechanisms",
-                "suitable_for": ["time_series", "forecasting", "multivariate"],
-            },
-            {
-                "type": "lstm",
-                "name": "Long Short-Term Memory",
-                "description": "Recurrent neural network for sequence modeling and time series prediction",
-                "suitable_for": ["time_series", "sequence_modeling", "forecasting"],
-            },
-            {
-                "type": "arima",
-                "name": "AutoRegressive Integrated Moving Average",
-                "description": "Statistical model for time series analysis and forecasting",
-                "suitable_for": ["time_series", "univariate", "statistical_analysis"],
-            },
-            {
-                "type": "linear",
-                "name": "Linear Regression",
-                "description": "Simple linear model for regression tasks",
-                "suitable_for": ["regression", "baseline", "interpretable"],
-            },
-            {
-                "type": "random_forest",
-                "name": "Random Forest",
-                "description": "Ensemble method using multiple decision trees",
-                "suitable_for": ["regression", "classification", "feature_importance"],
-            },
-            {
-                "type": "xgboost",
-                "name": "XGBoost",
-                "description": "Gradient boosting framework for structured data",
-                "suitable_for": ["regression", "classification", "high_performance"],
-            },
-        ]
-    }

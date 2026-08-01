@@ -32,7 +32,7 @@ const TRANSACTION_TYPES = [
 ];
 
 const formatCurrency = (value: unknown): string => {
-  if (typeof value !== "number") return String(value ?? "—");
+  if (typeof value !== "number") return String(value ?? "-");
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",

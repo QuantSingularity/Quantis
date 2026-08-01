@@ -57,125 +57,6 @@ async def get_all_users(
     return masked_users
 
 
-@router.get("/{user_id}", response_model=UserResponse)
-@require_permission("read_user")
-async def get_user_by_id(
-    user_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    data_masking_manager: DataMaskingManager = Depends(get_data_masking_manager),
-):
-    """Retrieve a user by ID (admin/privileged access or self)"""
-    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    current_role_name = current_user.role.role_name if current_user.role else None
-    if current_user.id != user_id and current_role_name != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this user's data",
-        )
-
-    user_dict = UserResponse.from_orm(user).dict()
-    masked_user = data_masking_manager.mask_object(user_dict)
-
-    AuditLogger.log_event(
-        db=db,
-        user_id=current_user.id,
-        action="read_user_by_id",
-        resource_type="user",
-        resource_id=str(user_id),
-        resource_name=user.username,
-        request=request,
-    )
-    return masked_user
-
-
-@router.put("/{user_id}", response_model=UserResponse)
-@require_permission("update_user")
-async def update_user(
-    user_id: int,
-    user_update: UserUpdate,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Update a user's information (admin/privileged access or self)"""
-    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    current_role_name = current_user.role.role_name if current_user.role else None
-    if current_user.id != user_id and current_role_name != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to update this user's data",
-        )
-
-    update_data = user_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(user, key, value)
-
-    db.commit()
-    db.refresh(user)
-
-    AuditLogger.log_event(
-        db=db,
-        user_id=current_user.id,
-        action="update_user",
-        resource_type="user",
-        resource_id=str(user_id),
-        resource_name=user.username,
-        request=request,
-    )
-    return UserResponse.from_orm(user)
-
-
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-@require_permission("delete_user")
-async def delete_user(
-    user_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Soft delete a user (admin/privileged access only)"""
-    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    current_role_name = current_user.role.role_name if current_user.role else None
-    if current_user.id == user_id and current_role_name == "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin users cannot delete their own account.",
-        )
-
-    user.is_deleted = True
-    user.deleted_at = datetime.utcnow()
-    user.deleted_by_id = current_user.id
-    db.commit()
-
-    AuditLogger.log_event(
-        db=db,
-        user_id=current_user.id,
-        action="delete_user",
-        resource_type="user",
-        resource_id=str(user_id),
-        resource_name=user.username,
-        request=request,
-    )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 # Role Endpoints
 @router.post("/roles", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
 @require_permission("create_role")
@@ -445,6 +326,131 @@ async def delete_permission(
         resource_type="permission",
         resource_id=str(permission_id),
         resource_name=permission.permission_name,
+        request=request,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# User-by-ID Endpoints (must come after the static /roles and /permissions
+# routes above - FastAPI matches routes in declaration order, so a
+# single-segment dynamic route like GET /{user_id} would otherwise shadow
+# GET /roles and GET /permissions, matching them with user_id="roles"/"permissions"
+# and failing int parsing. This previously broke the AdminUsers role/permission
+# management UI in both frontends.)
+@router.get("/{user_id}", response_model=UserResponse)
+@require_permission("read_user")
+async def get_user_by_id(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    data_masking_manager: DataMaskingManager = Depends(get_data_masking_manager),
+):
+    """Retrieve a user by ID (admin/privileged access or self)"""
+    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    current_role_name = current_user.role.role_name if current_user.role else None
+    if current_user.id != user_id and current_role_name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this user's data",
+        )
+
+    user_dict = UserResponse.from_orm(user).dict()
+    masked_user = data_masking_manager.mask_object(user_dict)
+
+    AuditLogger.log_event(
+        db=db,
+        user_id=current_user.id,
+        action="read_user_by_id",
+        resource_type="user",
+        resource_id=str(user_id),
+        resource_name=user.username,
+        request=request,
+    )
+    return masked_user
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+@require_permission("update_user")
+async def update_user(
+    user_id: int,
+    user_update: UserUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update a user's information (admin/privileged access or self)"""
+    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    current_role_name = current_user.role.role_name if current_user.role else None
+    if current_user.id != user_id and current_role_name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this user's data",
+        )
+
+    update_data = user_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+
+    db.commit()
+    db.refresh(user)
+
+    AuditLogger.log_event(
+        db=db,
+        user_id=current_user.id,
+        action="update_user",
+        resource_type="user",
+        resource_id=str(user_id),
+        resource_name=user.username,
+        request=request,
+    )
+    return UserResponse.from_orm(user)
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permission("delete_user")
+async def delete_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Soft delete a user (admin/privileged access only)"""
+    user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    current_role_name = current_user.role.role_name if current_user.role else None
+    if current_user.id == user_id and current_role_name == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin users cannot delete their own account.",
+        )
+
+    user.is_deleted = True
+    user.deleted_at = datetime.utcnow()
+    user.deleted_by_id = current_user.id
+    db.commit()
+
+    AuditLogger.log_event(
+        db=db,
+        user_id=current_user.id,
+        action="delete_user",
+        resource_type="user",
+        resource_id=str(user_id),
+        resource_name=user.username,
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

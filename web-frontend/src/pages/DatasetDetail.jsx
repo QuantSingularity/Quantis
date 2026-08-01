@@ -114,11 +114,11 @@ const DatasetDetail = () => {
         {[
           {
             label: "Rows",
-            value: stats?.row_count ?? dataset?.row_count ?? "—",
+            value: stats?.row_count ?? dataset?.row_count ?? "-",
           },
-          { label: "Columns", value: stats?.column_count ?? "—" },
-          { label: "Missing values", value: stats?.missing_values ?? "—" },
-          { label: "Frequency", value: dataset?.frequency ?? "—" },
+          { label: "Columns", value: stats?.column_count ?? "-" },
+          { label: "Missing values", value: stats?.missing_values ?? "-" },
+          { label: "Frequency", value: dataset?.frequency ?? "-" },
         ].map((item) => (
           <Grid item xs={6} md={3} key={item.label}>
             <Card>

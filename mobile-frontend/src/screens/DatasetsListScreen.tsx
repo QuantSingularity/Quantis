@@ -90,7 +90,7 @@ const DatasetsListScreen: React.FC<Props> = ({ navigation }) => {
                   variant="bodySmall"
                   style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}
                 >
-                  {dataset.row_count ?? "—"} rows · {dataset.frequency ?? "—"}
+                  {dataset.row_count ?? "-"} rows · {dataset.frequency ?? "-"}
                 </Text>
               </Card.Content>
             </Card>

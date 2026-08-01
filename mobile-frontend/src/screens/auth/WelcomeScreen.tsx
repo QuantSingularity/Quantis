@@ -34,7 +34,7 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           variant="bodyLarge"
           style={[styles.subhead, { color: theme.colors.onSurfaceVariant }]}
         >
-          Manage datasets, train models, and ship predictions — all from your
+          Manage datasets, train models, and ship predictions - all from your
           pocket.
         </Text>
 

@@ -65,7 +65,7 @@ const StatCard = ({
           variant="h4"
           sx={{ fontWeight: 700, mt: 1.5, mb: delta !== undefined ? 0.5 : 0 }}
         >
-          {loading ? "—" : value}
+          {loading ? "-" : value}
           {!loading && suffix}
         </Typography>
 

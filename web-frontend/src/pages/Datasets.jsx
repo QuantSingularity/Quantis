@@ -199,14 +199,14 @@ const Datasets = () => {
                   <TableCell>
                     <StatusChip status={dataset.status} />
                   </TableCell>
-                  <TableCell>{dataset.row_count ?? "—"}</TableCell>
+                  <TableCell>{dataset.row_count ?? "-"}</TableCell>
                   <TableCell sx={{ textTransform: "capitalize" }}>
-                    {dataset.frequency ?? "—"}
+                    {dataset.frequency ?? "-"}
                   </TableCell>
                   <TableCell>
                     {dataset.created_at
                       ? new Date(dataset.created_at).toLocaleDateString()
-                      : "—"}
+                      : "-"}
                   </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Delete dataset">

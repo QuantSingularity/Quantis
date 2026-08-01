@@ -128,7 +128,7 @@ const AdminUsers = () => {
                   <TableCell>
                     {u.created_at
                       ? new Date(u.created_at).toLocaleDateString()
-                      : "—"}
+                      : "-"}
                   </TableCell>
                   <TableCell align="right">
                     <Tooltip

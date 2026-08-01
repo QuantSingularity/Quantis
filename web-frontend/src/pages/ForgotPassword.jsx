@@ -47,7 +47,7 @@ const ForgotPassword = () => {
         </Typography>
         {devToken && (
           <Alert severity="info" sx={{ textAlign: "left", width: "100%" }}>
-            Dev mode — no SMTP configured. Use this link directly:
+            Dev mode - no SMTP configured. Use this link directly:
             <br />
             <MuiLink
               component={RouterLink}

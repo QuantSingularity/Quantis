@@ -409,7 +409,7 @@ def require_permission(required_permissions: Any) -> Any:
     Decorator to require specific user permission(s).
 
     Accepts either a single permission name (``"read_datasets"``) or a list
-    of permission names (``["read_datasets", "read_dataset"]``) — every
+    of permission names (``["read_datasets", "read_dataset"]``) - every
     call site in this codebase uses the single-string form, so a bare
     string is normalized into a one-element list here rather than being
     iterated character-by-character.
@@ -1186,7 +1186,7 @@ async def validate_api_key(
 
     Preserves that dependency's shared-secret system bypass (an
     ``X-API-Key`` header matching the ``API_SECRET`` environment variable
-    authenticates as a system/admin identity — used by trusted internal
+    authenticates as a system/admin identity - used by trusted internal
     services and CI), and otherwise defers to ``get_current_user``, which
     accepts either a JWT bearer token or a database-registered API key.
     """

@@ -229,7 +229,7 @@ const Dashboard = () => {
                         secondary={
                           p.created_at
                             ? new Date(p.created_at).toLocaleString()
-                            : "—"
+                            : "-"
                         }
                       />
                     </ListItem>
@@ -269,7 +269,7 @@ const Dashboard = () => {
                     >
                       <ListItemText
                         primary={d.name}
-                        secondary={`${d.row_count ?? "—"} rows`}
+                        secondary={`${d.row_count ?? "-"} rows`}
                       />
                     </ListItem>
                   ))}

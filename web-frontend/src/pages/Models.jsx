@@ -233,7 +233,7 @@ const Models = () => {
                     <TableCell>
                       {model.created_at
                         ? new Date(model.created_at).toLocaleDateString()
-                        : "—"}
+                        : "-"}
                     </TableCell>
                     <TableCell align="right">
                       <Tooltip

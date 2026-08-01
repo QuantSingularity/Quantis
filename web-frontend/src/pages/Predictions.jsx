@@ -252,17 +252,17 @@ const Predictions = () => {
                       >
                         {typeof p.prediction_result === "object"
                           ? JSON.stringify(p.prediction_result).slice(0, 60)
-                          : String(p.prediction_result ?? "—")}
+                          : String(p.prediction_result ?? "-")}
                       </TableCell>
                       <TableCell>
                         {typeof p.confidence_score === "number"
                           ? `${(p.confidence_score * 100).toFixed(0)}%`
-                          : "—"}
+                          : "-"}
                       </TableCell>
                       <TableCell>
                         {p.created_at
                           ? new Date(p.created_at).toLocaleDateString()
-                          : "—"}
+                          : "-"}
                       </TableCell>
                     </TableRow>
                   ))}

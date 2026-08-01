@@ -21,6 +21,7 @@ from ..auth.auth import get_current_user, require_admin
 
 # Local application imports - adjust if your project layout differs
 from ..core.database import get_db
+from ..domain import models
 from ..domain.models import User
 from ..services.user_service import UserService
 

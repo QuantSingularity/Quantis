@@ -13,7 +13,7 @@ import type { ModelsStackParamList } from "../navigation/types";
 type Props = NativeStackScreenProps<ModelsStackParamList, "ModelDetail">;
 
 const formatMetric = (value: unknown): string => {
-  if (typeof value !== "number") return String(value ?? "—");
+  if (typeof value !== "number") return String(value ?? "-");
   return Math.abs(value) < 1 ? value.toFixed(4) : value.toFixed(2);
 };
 

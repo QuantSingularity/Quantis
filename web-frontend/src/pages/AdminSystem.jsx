@@ -208,7 +208,7 @@ const AdminSystem = () => {
                   <TableCell>
                     {log.created_at
                       ? new Date(log.created_at).toLocaleString()
-                      : "—"}
+                      : "-"}
                   </TableCell>
                 </TableRow>
               ))}

@@ -42,7 +42,7 @@ const TRANSACTION_TYPES = [
 const emptyForm = { amount: "", transaction_type: "deposit", description: "" };
 
 const formatCurrency = (value) => {
-  if (typeof value !== "number") return value ?? "—";
+  if (typeof value !== "number") return value ?? "-";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -140,11 +140,11 @@ const Financial = () => {
           },
           {
             label: "Pending approval",
-            value: summary?.pending_approval ?? "—",
+            value: summary?.pending_approval ?? "-",
           },
           {
             label: "Flagged (high risk)",
-            value: summary?.high_risk_count ?? "—",
+            value: summary?.high_risk_count ?? "-",
           },
         ].map((item) => (
           <Grid item xs={6} md={3} key={item.label}>
@@ -194,7 +194,7 @@ const Financial = () => {
                   <TableCell sx={{ fontFamily: "monospace" }}>
                     {formatCurrency(tx.amount)}
                   </TableCell>
-                  <TableCell>{tx.description || "—"}</TableCell>
+                  <TableCell>{tx.description || "-"}</TableCell>
                   <TableCell>
                     <StatusChip status={tx.status} />
                   </TableCell>
@@ -202,13 +202,13 @@ const Financial = () => {
                     {tx.risk_level ? (
                       <StatusChip status={tx.risk_level} />
                     ) : (
-                      "—"
+                      "-"
                     )}
                   </TableCell>
                   <TableCell>
                     {tx.created_at
                       ? new Date(tx.created_at).toLocaleDateString()
-                      : "—"}
+                      : "-"}
                   </TableCell>
                 </TableRow>
               ))}

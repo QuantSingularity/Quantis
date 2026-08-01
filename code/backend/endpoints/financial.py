@@ -98,7 +98,7 @@ async def create_transaction(
         # Create transaction record
         # risk_assessment / limit_check / aml_check may contain raw Decimal
         # values (e.g. limit thresholds, current totals) which aren't
-        # JSON-serializable for the compliance_flags column — convert first.
+        # JSON-serializable for the compliance_flags column - convert first.
         compliance_flags = financial_services["reporting"]._convert_decimals_to_strings(
             {
                 "aml_check": aml_check,

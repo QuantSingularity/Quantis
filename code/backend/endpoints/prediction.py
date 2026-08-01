@@ -77,11 +77,14 @@ async def predict(
 
         input_data = request.input_data
         if isinstance(input_data, dict):
-            features = (
-                input_data.get("features") or list(input_data.values())[0]
-                if input_data
-                else []
-            )
+            if isinstance(input_data.get("features"), list):
+                features = input_data["features"]
+            elif input_data:
+                # No explicit "features" list: treat every value in the dict
+                # as one element of the feature vector, preserving order.
+                features = list(input_data.values())
+            else:
+                features = []
         elif isinstance(input_data, list):
             features = input_data
         else:
@@ -93,10 +96,7 @@ async def predict(
             input_data=features,
         )
 
-        return PredictionResponse(
-            prediction=prediction.prediction_result,
-            confidence=prediction.confidence_score,
-        )
+        return PredictionResponse.model_validate(prediction)
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -166,10 +166,7 @@ async def predict_with_model(
             input_data=features,
         )
 
-        return PredictionResponse(
-            prediction=prediction.prediction_result,
-            confidence=prediction.confidence_score,
-        )
+        return PredictionResponse.model_validate(prediction)
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

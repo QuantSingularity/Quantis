@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }) => {
       const { data } = await authAPI.getCurrentUser();
       setUser(data);
     } catch (error) {
-      // Ignore — interceptor will handle 401 -> session expiry
+      // Ignore - interceptor will handle 401 -> session expiry
     }
   }, []);
 

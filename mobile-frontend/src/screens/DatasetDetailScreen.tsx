@@ -71,25 +71,25 @@ const DatasetDetailScreen: React.FC<Props> = ({ route }) => {
             <DataTable.Row>
               <DataTable.Cell>Rows</DataTable.Cell>
               <DataTable.Cell numeric>
-                {String(stats?.row_count ?? dataset?.row_count ?? "—")}
+                {String(stats?.row_count ?? dataset?.row_count ?? "-")}
               </DataTable.Cell>
             </DataTable.Row>
             <DataTable.Row>
               <DataTable.Cell>Columns</DataTable.Cell>
               <DataTable.Cell numeric>
-                {String(stats?.column_count ?? "—")}
+                {String(stats?.column_count ?? "-")}
               </DataTable.Cell>
             </DataTable.Row>
             <DataTable.Row>
               <DataTable.Cell>Missing values</DataTable.Cell>
               <DataTable.Cell numeric>
-                {String(stats?.missing_values ?? "—")}
+                {String(stats?.missing_values ?? "-")}
               </DataTable.Cell>
             </DataTable.Row>
             <DataTable.Row>
               <DataTable.Cell>Frequency</DataTable.Cell>
               <DataTable.Cell numeric>
-                {dataset?.frequency ?? "—"}
+                {dataset?.frequency ?? "-"}
               </DataTable.Cell>
             </DataTable.Row>
           </DataTable>

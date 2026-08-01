@@ -13,6 +13,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     HTTPException,
     Query,
     Request,
@@ -98,14 +99,25 @@ async def create_dataset(
 @require_permission("upload_dataset")
 async def upload_dataset(
     request: Request,
-    dataset_upload: DatasetUpload = Depends(),
     file: UploadFile = File(...),
+    name: str = Form(...),
+    description: str = Form(None),
+    source: str = Form(None),
+    frequency: str = Form(None),
+    tags: List[str] = Form([]),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     encryption_manager: EncryptionManager = Depends(get_encryption_manager),
 ):
     """Upload a dataset file and create/update its record."""
     dataset_service = DatasetService(db)
+    dataset_upload = DatasetUpload(
+        name=name,
+        description=description,
+        source=source,
+        frequency=frequency,
+        tags=tags,
+    )
 
     # Validate file type and size
     file_extension = os.path.splitext(file.filename)[1].lower()

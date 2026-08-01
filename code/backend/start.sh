@@ -34,11 +34,14 @@ if [ ! -f ".env" ]; then
 fi
 
 # Initialize database
+# NOTE: the backend package uses relative imports (e.g. `from ..auth.auth import ...`)
+# so it must be imported as the `backend` package from its parent directory (`code/`),
+# not as a standalone `api` package from inside `backend/`.
 echo "Initializing database..."
 python3 -c "
 import sys
 sys.path.insert(0, '..')
-from api.database import init_db
+from backend.core.database import init_db
 try:
     init_db()
     print('✓ Database initialized')
@@ -52,4 +55,5 @@ echo "Starting server on http://0.0.0.0:8000"
 echo "API documentation will be available at http://localhost:8000/docs"
 echo "================================================"
 
-uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
+cd ..
+uvicorn backend.core.app:app --host 0.0.0.0 --port 8000 --reload
