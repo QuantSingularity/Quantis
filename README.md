@@ -9,7 +9,7 @@
 Quantis is a comprehensive quantitative trading and investment analytics platform that combines advanced statistical models, machine learning algorithms, and real-time market data to provide powerful insights and automated trading strategies.
 
 <div align="center">
-  <img src="docs/images/Quantis_dashboard.bmp" alt="Quantis Dashboard" width="80%">
+  <img src="docs/images/homepage.bmp" alt="Quantis HomePage" width="80%">
 </div>
 
 ---
