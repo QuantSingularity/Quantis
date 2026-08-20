@@ -1,253 +1,248 @@
 # Quantis
 
-![CI/CD Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/Quantis/cicd.yml?branch=main&label=CI/CD&logo=github)
-[![Test Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com/quantsingularity/Quantis/actions)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![CI/CD Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/Quantis/cicd.yml?branch=main&label=CI%2FCD&logo=github)
 
-## Quantitative Trading & Investment Analytics Platform
+## Quantitative Trading and Investment Analytics Platform
 
-Quantis is a comprehensive quantitative trading and investment analytics platform that combines advanced statistical models, machine learning algorithms, and real-time market data to provide powerful insights and automated trading strategies.
+Quantis is a financial forecasting and ML platform: a FastAPI backend for auth, datasets, models, predictions, notifications, monitoring, financial calculations, and real-time WebSocket updates, paired with a React web dashboard and a React Native (Expo, TypeScript) mobile app. A separate quantitative research library (`code/quant_ml`) covers alpha signals, portfolio optimization, regime detection, and a PyTorch-based forecasting model with real MLflow experiment tracking; the live backend's own test suite exercises it, but the running API doesn't import it.
 
 <div align="center">
-  <img src="docs/images/homepage.bmp" alt="Quantis HomePage" width="80%">
+  <img src="docs/images/homepage.bmp" alt="Quantis HomePage" width="100%">
 </div>
-
----
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Project Structure](#project-structure)
-- [Key Features](#key-features)
-- [Architecture](#architecture)
+- [Feature Status](#feature-status)
 - [Technology Stack](#technology-stack)
-- [Getting Started](#getting-started)
-- [API Documentation](#api-documentation)
+- [Architecture](#architecture)
+- [Installation and Setup](#installation-and-setup)
+- [Running the Stack](#running-the-stack)
+- [API Surface](#api-surface)
 - [Testing](#testing)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
 
----
-
 ## Overview
 
-Quantis provides a robust platform for quantitative analysis, algorithmic trading, and investment portfolio optimization. The system leverages advanced statistical models and machine learning algorithms to analyze market data, identify trading opportunities, and execute automated trading strategies. The microservices architecture ensures that each component from data ingestion to strategy execution is independent, resilient, and can be scaled horizontally to handle high-volume, low-latency market operations.
-
----
+Quantis demonstrates a financial forecasting workflow across a real, runnable codebase. The FastAPI backend and both clients are wired and covered by tests. As shipped, the backend runs on SQLite by default (a live `quantis.db` file, with its write-ahead-log files, is checked into the repository); Docker Compose provisions a MySQL 8.0 container, but no MySQL driver is listed in `requirements.txt`, so the app can't actually connect to it without adding one.
 
 ## Project Structure
 
-The project is organized into several main components:
-
 ```
 Quantis/
-├── code/                   # Core backend logic, services, and shared utilities
-├── docs/                   # Project documentation
-├── infrastructure/         # DevOps, deployment, and infra-related code
-├── mobile-frontend/        # Mobile application
-├── web-frontend/           # Web dashboard
-├── scripts/                # Automation, setup, and utility scripts
-├── LICENSE                 # License information
-├── README.md               # Project overview and instructions
-└── tools/                  # Formatter configs, linting tools, and dev utilities
+├── code/
+│   ├── backend/                # FastAPI application
+│   │   ├── core/app.py         # App setup and router registration
+│   │   ├── endpoints/          # auth, users, datasets, models, prediction,
+│   │   │                       # notifications, monitoring, financial, websocket
+│   │   ├── domain/             # Domain logic
+│   │   ├── services/           # Business logic backing the endpoints
+│   │   ├── workers/            # Celery task definitions
+│   │   ├── auth/               # JWT and MFA logic
+│   │   └── tests/              # Backend test suite (also exercises code/quant_ml)
+│   └── quant_ml/               # Quantitative research library (not imported by
+│       │                       # the live API; exercised only by backend tests)
+│       ├── quant/              # alpha_signals, portfolio_optimizer, regime_detection,
+│       │                       # risk_metrics, execution_model, backtester
+│       └── models/             # train_model.py (PyTorch), mlflow_tracking.py,
+│                               # aws_deploy.py (optional SageMaker deployment)
+├── web-frontend/               # React (Vite) dashboard
+├── mobile-frontend/            # React Native (Expo) app, TypeScript
+├── infrastructure/             # Docker, Kubernetes, Terraform, Ansible, monitoring
+├── scripts/                    # Setup, run, test, lint, and build scripts
+├── docs/                       # Documentation (this directory)
+└── README.md
 ```
 
-## Key Features
+## Feature Status
 
-Quantis's functionality is divided into four main domains, each powered by dedicated services.
+### Application tier (wired and tested)
 
-### 1. Data Processing
+| Component                  | Details                                                                                                                                                                                                                                                     |
+| :------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API**                    | FastAPI backend exposing `/auth`, `/users`, `/datasets`, `/models`, `/predictions`, `/notifications`, `/monitoring`, `/financial`, and `/ws`.                                                                                                               |
+| **Auth**                   | JWT sessions, MFA setup/enable/disable, and API key management. `secret_key` defaults to a static placeholder ("dev-key-change-in-prod") with no check that rejects it in production.                                                                       |
+| **Real-time updates**      | A genuine WebSocket connection manager (`endpoints/websocket.py`) for pushing updates to connected users, not a placeholder.                                                                                                                                |
+| **Financial calculations** | Interest and NPV calculation endpoints, plus a transaction workflow with approve/reject actions and configurable compliance limits.                                                                                                                         |
+| **Background tasks**       | Celery workers, backed by Redis.                                                                                                                                                                                                                            |
+| **Data layer**             | SQLite by default (`sqlite:///./quantis.db`); no PostgreSQL or MySQL driver is installed, so the MySQL container in Docker Compose isn't reachable from the app as shipped.                                                                                 |
+| **Production container**   | `infrastructure/Dockerfile.api` starts gunicorn with `app.main:app`, but there is no `app/main.py` (or `api/app.py`) anywhere in the codebase; the real FastAPI instance is `core.app:app`. As currently written, the production image would fail to start. |
+| **Experiment tracking**    | Genuine MLflow integration (`mlflow.start_run`, `log_params`, `log_metrics`, `log_artifact`) in `quant_ml/models/mlflow_tracking.py`, with its own MLflow container in Docker Compose.                                                                      |
+| **Web dashboard**          | React app (plain JavaScript, Vite) with Material-UI and Recharts, covering datasets, models, predictions, financial, monitoring, and authentication screens.                                                                                                |
+| **Mobile app**             | React Native (Expo) app in TypeScript, covering the equivalent core screens.                                                                                                                                                                                |
 
-- Real-time and historical market data
-- Alternative data support
-- Automated data validation
+### Research tier (library, exercised by tests, not called by the live API)
 
-### 2. Quantitative Analysis
+| Component                             | Details                                                                                                                                                                                  |
+| :------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Forecasting model**                 | A PyTorch model trained by `quant_ml/models/train_model.py`, evaluated with scikit-learn metrics.                                                                                        |
+| **Quant research modules**            | Alpha signal generation, portfolio optimization, regime detection, risk metrics, an execution model, and a backtester, all in `quant_ml/quant`. None of these have their own test files. |
+| **Optional AWS SageMaker deployment** | `quant_ml/models/aws_deploy.py` can deploy a trained model to SageMaker, but only if the `sagemaker` package is installed separately; it isn't a default dependency.                     |
 
-- Statistical and machine learning models
-- Risk metrics including VaR
-- Portfolio optimization tools
-
-### 3. Trading Strategies
-
-- Strategy creation and testing
-- Signal generation
-- Backtesting and execution
-
-### 4. Portfolio Management
-
-- Asset allocation
-- Risk monitoring
-- Performance tracking and rebalancing
-
----
-
-## Architecture
-
-Quantis follows a microservices architecture, logically grouped into three main service layers, supported by a common infrastructure.
-
-### Architectural Components
-
-| Layer                   | Key Services                                                                  | Description                                                                           |
-| :---------------------- | :---------------------------------------------------------------------------- | :------------------------------------------------------------------------------------ |
-| **Data Services**       | Market Data, Alternative Data, Historical Data, Data Quality                  | Responsible for all data ingestion, storage, cleaning, and retrieval.                 |
-| **Analytical Services** | Statistical Analysis, Machine Learning, Risk Analysis, Portfolio Optimization | Contains the core quantitative intelligence, running models and generating insights.  |
-| **Trading Services**    | Strategy, Signal Generation, Backtesting, Execution                           | Manages the full lifecycle of trading strategies, from development to live execution. |
-| **Infrastructure**      | API Gateway, Authentication Service, Monitoring Stack, Data Storage           | Provides common technical capabilities and ensures system stability and security.     |
-
----
+Only the backend's own test files (`test_forecasting_model.py`, `test_model.py`, `test_infrastructure.py`) import anything from `code/quant_ml`; the running FastAPI application does not.
 
 ## Technology Stack
 
-The platform is built using a modern, performant, and well-supported technology stack.
+| Area                 | Technology                                                               |
+| :------------------- | :----------------------------------------------------------------------- |
+| Backend API          | Python 3.11+, FastAPI, Uvicorn, Pydantic v2                              |
+| Auth                 | PyJWT, an in-house MFA module                                            |
+| Data layer           | SQLAlchemy 2, SQLite by default                                          |
+| Background tasks     | Celery, Redis                                                            |
+| Quant / ML (library) | PyTorch, scikit-learn, MLflow, pandas, optional AWS SageMaker deployment |
+| Web frontend         | React 18, JavaScript, Vite, Material-UI, Recharts, axios                 |
+| Mobile frontend      | React Native, Expo, TypeScript                                           |
+| Infrastructure       | Docker, Docker Compose, Kubernetes, Terraform, Ansible                   |
+| Monitoring           | Prometheus, Grafana, Alertmanager, node-exporter, cAdvisor               |
+| CI/CD                | GitHub Actions                                                           |
+| Testing              | pytest (backend), Vitest (web), Jest (mobile)                            |
 
-| Category               | Key Technologies                                                   | Description                                                                                                                        |
-| :--------------------- | :----------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
-| **Backend**            | Python, Rust, FastAPI, Flask                                       | Python for data science and rapid development; Rust for performance-critical components. FastAPI/Flask for robust API development. |
-| **Databases**          | PostgreSQL, InfluxDB                                               | PostgreSQL for relational data and core system state; InfluxDB for high-volume time series data storage.                           |
-| **Task Queue**         | Celery, Redis                                                      | Celery for asynchronous task processing; Redis for task queuing and caching.                                                       |
-| **ML/Quant Libraries** | scikit-learn, PyTorch, pandas-ta, pyfolio, zipline                 | Specialized libraries for machine learning, technical analysis, performance reporting, and event-driven backtesting.               |
-| **Frontend**           | React, TypeScript, Redux Toolkit, D3.js, Plotly, TradingView       | Modern stack for a responsive, data-rich web dashboard with advanced visualization capabilities.                                   |
-| **DevOps**             | Docker, Kubernetes, GitHub Actions, Prometheus, Grafana, ELK Stack | Full-stack CI/CD, container orchestration, and observability tools for production readiness.                                       |
+## Architecture
 
----
+```
+Clients
+  ├── web-frontend (React)               ── HTTP/WebSocket ──┐
+  └── mobile-frontend (React Native)     ── HTTP/WebSocket ──┤
+                                                             ▼
+Backend (FastAPI)
+  ├── Endpoints   auth, users, datasets, models, predictions,
+  │               notifications, monitoring, financial, ws
+  ├── Services     business logic backing each endpoint group
+  ├── Workers       Celery tasks (Redis-backed)
+  └── Data layer      SQLite (SQLAlchemy)
 
-## Getting Started
+Research library (code/quant_ml, not called by the live API)
+  quant (alpha signals, portfolio optimization, regime detection,
+  risk metrics, execution model, backtester)
+  models (PyTorch training, MLflow tracking, optional SageMaker deployment)
+```
 
-### Prerequisites
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detail.
 
-To set up the platform, ensure you have the following installed:
+## Installation and Setup
 
-- **Python** (v3.9+)
-- **Node.js** (v16+)
-- **Docker** and Docker Compose
-- **Kubernetes** (for production deployment)
+Prerequisites: Python 3.9+ and Node.js 16+.
 
-### Setup
+```bash
+git clone https://github.com/quantsingularity/Quantis.git
+cd Quantis
 
-The recommended way to set up the development environment is using the provided scripts:
+# Backend (also installs quant_ml's dependencies)
+cd code/backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-| Step                    | Command                                                                   | Description                                                     |
-| :---------------------- | :------------------------------------------------------------------------ | :-------------------------------------------------------------- |
-| **1. Clone Repository** | `git clone https://github.com/quantsingularity/Quantis.git && cd Quantis` | Download the source code and navigate to the project directory. |
-| **2. Run Setup Script** | `./setup_quantis_env.sh`                                                  | Installs dependencies and configures the local environment.     |
-| **3. Start Services**   | `./run_quantis.sh dev`                                                    | Starts all core services for development.                       |
+# Web frontend
+cd ../../web-frontend
+npm install
 
-**Access Points:**
+# Mobile frontend
+cd ../mobile-frontend
+npm install
+```
 
-- **Web Dashboard**: `http://localhost:3000`
-- **API Documentation**: `http://localhost:8000/docs`
-- **Monitoring Dashboard**: `http://localhost:9090`
+For an automated setup:
 
-### Deployment
+```bash
+git clone https://github.com/quantsingularity/Quantis.git
+cd Quantis
+./scripts/setup_quantis_env.sh
+./scripts/run_quantis.sh
+```
 
-Quantis supports both Docker Compose for local environments and Kubernetes for production deployment.
+Full, environment-specific instructions are in [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
-| Deployment Target  | Command Example                        |
-| :----------------- | :------------------------------------- |
-| **Docker Compose** | `docker-compose up -d`                 |
-| **Kubernetes**     | `kubectl apply -f infrastructure/k8s/` |
+## Running the Stack
 
----
+```bash
+# 1) Supporting services, including MySQL (unreachable without adding a driver;
+#    the app itself will fall back to SQLite), Redis, and MLflow (from
+#    infrastructure/, Docker required)
+docker compose up -d redis mlflow
 
-## API Documentation
+# 2) Backend (from code/backend, venv active)
+uvicorn core.app:app --reload      # serves http://0.0.0.0:8000, docs at /docs
 
-Quantis exposes a comprehensive, versioned API for all platform interactions, accessible via the API Gateway.
+# 3) Web dashboard (from web-frontend)
+npm run dev
 
-### Key API Endpoints
+# 4) Mobile app (from mobile-frontend)
+npm start
+```
 
-| Service         | Endpoint                              | Method | Description                                 |
-| :-------------- | :------------------------------------ | :----- | :------------------------------------------ |
-| **Market Data** | `/api/v1/market/prices`               | `GET`  | Get real-time market prices.                |
-| **Strategy**    | `/api/v1/strategies`                  | `POST` | Create a new trading strategy.              |
-| **Strategy**    | `/api/v1/strategies/{id}/backtest`    | `POST` | Run a strategy backtest and return results. |
-| **Portfolio**   | `/api/v1/portfolios/{id}/performance` | `GET`  | Get detailed portfolio performance metrics. |
-| **Portfolio**   | `/api/v1/portfolios/{id}/rebalance`   | `POST` | Trigger an automated portfolio rebalancing. |
+**Access points:** Web dashboard at `http://localhost:3000`, API docs at `http://localhost:8000/docs`.
 
-Full API documentation, including request/response schemas, is available at `http://localhost:8000/docs`.
+See [docs/USAGE.md](docs/USAGE.md) and [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
----
+## API Surface
+
+Base URL `http://localhost:8000`. Interactive docs at `/docs` (Swagger) and `/redoc`.
+
+| Group         | Prefix           | Highlights                                                                                              |
+| :------------ | :--------------- | :------------------------------------------------------------------------------------------------------ |
+| Auth          | `/auth`          | `login`, `refresh`, `logout`, `me`, `mfa/setup`, `mfa/enable`, `api-keys`                               |
+| Users         | `/users`         | list, `roles`, `permissions`, `{user_id}`                                                               |
+| Datasets      | `/datasets`      | upload, list, `{dataset_id}`, `{dataset_id}/stats`, `{dataset_id}/preview`, `{dataset_id}/download`     |
+| Models        | `/models`        | list/create, `compare`, `types`, `{model_id}`, `{model_id}/train`, `{model_id}/metrics`                 |
+| Predictions   | `/predictions`   | `predict`, `predict/batch`, `predictions/history`, `predictions/stats`                                  |
+| Notifications | `/notifications` | list, `{id}/read`, `mark-all-read`                                                                      |
+| Monitoring    | `/monitoring`    | `health`, `stats`, `audit-logs`, `metrics`, `analytics/predictions`, `maintenance/cleanup`              |
+| Financial     | `/financial`     | `transactions`, `transactions/{id}/approve`, `financial-summary`, `calculate-interest`, `calculate-npv` |
+| WebSocket     | `/ws`            | Real-time connection endpoint                                                                           |
+
+Full request and response shapes are in [docs/API.md](docs/API.md).
 
 ## Testing
 
-The project maintains an overall test coverage of **82%** across all components, ensuring reliability and accuracy in financial calculations and trading logic.
+```bash
+# Backend, from code/backend (also runs the quant_ml tests that live here)
+pytest
 
-### Test Coverage Summary
+# Web (from web-frontend)
+npm test
 
-| Component                | Coverage | Status |
-| :----------------------- | :------- | :----- |
-| **Trading Services**     | 87%      | ✅     |
-| **Data Services**        | 85%      | ✅     |
-| **Analytical Services**  | 83%      | ✅     |
-| **Portfolio Management** | 80%      | ✅     |
-| **API Layer**            | 90%      | ✅     |
-| **Frontend Components**  | 75%      | ✅     |
+# Mobile (from mobile-frontend)
+npm test
+```
 
-### Testing Types
-
-Testing is categorized into four main types:
-
-| Test Type         | Description                                                        |
-| ----------------- | ------------------------------------------------------------------ |
-| Unit Tests        | Validate individual functions, models, and core trading logic      |
-| Integration Tests | Validate end-to-end workflows, APIs, and database interactions     |
-| Performance Tests | Measure throughput, backtesting speed, and API response under load |
-| Security Tests    | Ensure compliance with security standards and best practices       |
-
-**Running Tests:** All tests can be executed using the `pytest` command from the root directory: `pytest`. Specific categories can be targeted (e.g., `pytest tests/unit/`).
-
----
+The backend suite has 9 test files, including coverage of the `quant_ml` forecasting model. The web dashboard has 5 test files (Vitest); the mobile app has 3 (Jest). There is no dedicated test suite inside `code/quant_ml` itself.
 
 ## CI/CD Pipeline
 
-Quantis uses GitHub Actions for continuous integration and deployment:
+GitHub Actions (`.github/workflows/cicd.yml`) runs three jobs on push, pull request, and manual dispatch:
 
-| Stage                | Control Area                    | Institutional-Grade Detail                                                              |
-| :------------------- | :------------------------------ | :-------------------------------------------------------------------------------------- |
-| **Formatting Check** | Change Triggers                 | Enforced on all `push` and `pull_request` events to `main` and `develop`                |
-|                      | Manual Oversight                | On-demand execution via controlled `workflow_dispatch`                                  |
-|                      | Source Integrity                | Full repository checkout with complete Git history for auditability                     |
-|                      | Python Runtime Standardization  | Python 3.10 with deterministic dependency caching                                       |
-|                      | Backend Code Hygiene            | `autoflake` to detect unused imports/variables using non-mutating diff-based validation |
-|                      | Backend Style Compliance        | `black --check` to enforce institutional formatting standards                           |
-|                      | Non-Intrusive Validation        | Temporary workspace comparison to prevent unauthorized source modification              |
-|                      | Node.js Runtime Control         | Node.js 18 with locked dependency installation via `npm ci`                             |
-|                      | Web Frontend Formatting Control | Prettier checks for web-facing assets                                                   |
-|                      | Mobile Frontend Formatting      | Prettier enforcement for mobile application codebases                                   |
-|                      | Documentation Governance        | Repository-wide Markdown formatting enforcement                                         |
-|                      | Infrastructure Configuration    | Prettier validation for YAML/YML infrastructure definitions                             |
-|                      | Compliance Gate                 | Any formatting deviation fails the pipeline and blocks merge                            |
+| Job                 | Depends on          | What it does                                                                       |
+| :------------------ | :------------------ | :--------------------------------------------------------------------------------- |
+| Code Quality Checks | -                   | Python formatter checks (autoflake, black) and a repository-wide Prettier check    |
+| Backend Tests       | Code Quality Checks | Runs the pytest suite with coverage and uploads the coverage report as an artifact |
+| Frontend Build      | Code Quality Checks | Installs dependencies and produces the production web build (no test step)         |
 
----
+There is currently no CI job for the mobile app.
 
 ## Documentation
 
-| Document                    | Path                 | Description                                                    |
-| :-------------------------- | :------------------- | :------------------------------------------------------------- |
-| **README**                  | `README.md`          | High-level overview, project scope, and repository entry point |
-| **Installation Guide**      | `INSTALLATION.md`    | Step-by-step installation and environment setup                |
-| **API Reference**           | `API.md`             | Detailed documentation for all API endpoints                   |
-| **CLI Reference**           | `CLI.md`             | Command-line interface usage, commands, and examples           |
-| **User Guide**              | `USAGE.md`           | Comprehensive end-user guide, workflows, and examples          |
-| **Architecture Overview**   | `ARCHITECTURE.md`    | System architecture, components, and design rationale          |
-| **Configuration Guide**     | `CONFIGURATION.md`   | Configuration options, environment variables, and tuning       |
-| **Feature Matrix**          | `FEATURE_MATRIX.md`  | Feature coverage, capabilities, and roadmap alignment          |
-| **Contributing Guidelines** | `CONTRIBUTING.md`    | Contribution workflow, coding standards, and PR requirements   |
-| **Troubleshooting**         | `TROUBLESHOOTING.md` | Common issues, diagnostics, and remediation steps              |
+| Document                                           | Contents                               |
+| :------------------------------------------------- | :------------------------------------- |
+| [docs/README.md](docs/README.md)                   | Documentation index                    |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)       | System architecture                    |
+| [docs/API.md](docs/API.md)                         | REST API reference                     |
+| [docs/INSTALLATION.md](docs/INSTALLATION.md)       | Setup for all components               |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md)     | Environment variables and config       |
+| [docs/USAGE.md](docs/USAGE.md)                     | Running and using the platform         |
+| [docs/CLI.md](docs/CLI.md)                         | Helper scripts reference               |
+| [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md)   | Feature status, implemented vs planned |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and fixes                |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)       | Contribution guide                     |
+| [docs/examples/](docs/examples/)                   | Worked examples                        |
 
 ## Contributing
 
-We welcome contributions to Quantis! To get involved:
-
-1.  Fork the repository.
-2.  Create your feature branch (`git checkout -b feature/your-feature-name`).
-3.  Commit your changes and push to the branch.
-4.  Open a Pull Request for review.
-
----
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
