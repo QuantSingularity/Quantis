@@ -27,8 +27,6 @@ def log_experiment(params: Any, metrics: Any, model: Any) -> None:
         logger.debug("mlflow not installed; skipping experiment logging.")
         return
 
-    # BUG FIX: calling mlflow.start_run() when a run is already active raises
-    # MlflowException.  Use nested=True so this always works safely.
     with mlflow.start_run(nested=bool(mlflow.active_run())):
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)

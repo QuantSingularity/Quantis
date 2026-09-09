@@ -57,9 +57,6 @@ class DataEngine:
         """
         Load and preprocess data from a parquet file path.
 
-        BUG FIX: sklearn fit_transform does not work on Dask DataFrames —
-        the original called fit_transform(ddf) which raises TypeError.
-        We now call .compute() to materialise the pandas DataFrame first.
         """
         try:
             if DASK_AVAILABLE:
@@ -80,8 +77,6 @@ class DataEngine:
         """
         Add rolling-window temporal features to a pandas DataFrame.
 
-        BUG FIX: Original used df.groupby().transform() which crashes on Dask
-        DataFrames — method now explicitly accepts pandas DataFrame.
         """
         df = df.copy()
         df["rolling_mean_7"] = df.groupby(entity_col)[value_col].transform(

@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 import torch
-
 from quant_ml.models.mlflow_tracking import log_metrics
 from quant_ml.models.train_model import TemporalFusionTransformer, train_model
 

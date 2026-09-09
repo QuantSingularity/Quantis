@@ -25,9 +25,8 @@ def init_test_database() -> None:
 
 @pytest.fixture
 def test_client() -> Any:
-    from fastapi.testclient import TestClient
-
     from backend.core.app import app
+    from fastapi.testclient import TestClient
 
     return TestClient(app)
 

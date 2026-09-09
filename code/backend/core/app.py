@@ -108,8 +108,6 @@ class AuditMiddleware(BaseHTTPMiddleware):
             try:
                 user: Optional[User] = getattr(request.state, "user", None)
                 user_id = user.id if user else None
-                # BUG FIX: original code leaked the DB session (no close).
-                # Use the generator protocol correctly with try/finally.
                 db_gen = get_db()
                 db = next(db_gen)
                 try:

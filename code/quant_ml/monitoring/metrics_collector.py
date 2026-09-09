@@ -28,7 +28,6 @@ class MetricsCollector:
         self._cloudwatch: Optional[Any] = None
         self._cw_available: bool = True
 
-        # BUG FIX: create the boto3 client once at init time, not on every record call.
         try:
             import boto3
 
@@ -82,7 +81,6 @@ class MetricsCollector:
                     ],
                 )
             except Exception as e:
-                # BUG FIX: don't let a transient AWS error propagate and kill the request
                 logger.warning("CloudWatch put_metric_data failed: %s", e)
 
     def get_recorded_metrics(self) -> List[dict]:

@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
-
 from quant_ml.models.train_model import TemporalFusionTransformer, train_model
 
 

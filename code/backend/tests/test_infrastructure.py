@@ -6,7 +6,6 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-
 from quant_ml.models.aws_deploy import deploy_to_aws
 from quant_ml.monitoring.metrics_collector import MetricsCollector
 

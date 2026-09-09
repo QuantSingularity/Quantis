@@ -335,7 +335,6 @@ async def get_current_user_from_token(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="MFA code required"
             )
-        # Bug fix: was `user.mfa_secret == False` which compares object to bool
         if not user.mfa_secret:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

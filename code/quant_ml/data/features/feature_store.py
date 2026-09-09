@@ -36,8 +36,6 @@ def create_feature_view(repo_path: str = ".") -> Optional[Any]:
         return None
 
     try:
-        # BUG FIX: Feast >= 0.30 deprecated value_type/ValueType.
-        # Use join_keys (list of column name strings) instead.
         driver = Entity(
             name="driver_id",
             join_keys=["driver_id"],
@@ -57,7 +55,6 @@ def create_feature_view(repo_path: str = ".") -> Optional[Any]:
         )
 
         fs = FeatureStore(repo_path=repo_path)
-        # BUG FIX: pass both entity and feature_view in the same apply() call
         fs.apply([driver, feature_view])
         return feature_view
 

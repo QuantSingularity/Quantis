@@ -41,7 +41,6 @@ def deploy_to_aws(model_path: str, bucket_name: str) -> str:
             "boto3 is required for AWS deployment. Install with: pip install boto3"
         ) from exc
 
-    # BUG FIX: use basename so full local paths don't leak into S3 key
     s3_key = f"models/{os.path.basename(model_path)}"
     try:
         s3_client = boto3.client("s3")
@@ -85,7 +84,6 @@ def deploy_to_sagemaker(
         model = PyTorchModel(
             entry_point="inference.py",
             role=role,
-            # BUG FIX: framework_version 2.0 is deprecated on SageMaker; use 2.1
             framework_version="2.1",
             py_version="py310",
             model_data=model_data_s3_uri,

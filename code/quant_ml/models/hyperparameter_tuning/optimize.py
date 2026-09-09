@@ -59,7 +59,6 @@ def run_optimization(
     Returns:
         Dict with best_params and best_value, or None if optuna is unavailable.
     """
-    # BUG FIX: validate direction before handing to Optuna (clearer error message)
     if direction not in VALID_DIRECTIONS:
         raise ValueError(
             f"Invalid direction {direction!r}. Must be one of {VALID_DIRECTIONS}."

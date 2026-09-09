@@ -153,7 +153,6 @@ def train_model(
       2. train_model(data_path, params)                         — legacy usage
       3. train_model(None)                                      — uses default params
     """
-    # BUG FIX: None was passed directly and caused attribute errors downstream
     if model_or_data_path is None:
         model_or_data_path = "default"
 
@@ -170,7 +169,6 @@ def train_model(
             outputs = model(X_train)
             loss = criterion(outputs, y_train)
             loss.backward()
-            # BUG FIX: gradient clipping prevents NaN loss / exploding gradients
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
@@ -235,7 +233,6 @@ def train_model(
     with torch.no_grad():
         y_pred = model(X_te)
         test_loss = criterion(y_pred, y_te)
-        # BUG FIX: .detach() is required before .numpy() on any gradient-tracked tensor
         y_test_np = y_te.detach().numpy()
         y_pred_np = y_pred.detach().numpy()
         mse = mean_squared_error(y_test_np, y_pred_np)
