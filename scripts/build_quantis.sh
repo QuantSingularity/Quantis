@@ -3,7 +3,7 @@
 # Quantis Project Build Script
 # This script builds the production assets for the API and web frontend,
 # and installs mobile frontend dependencies (Expo apps are built via EAS,
-# not a local build step — see the note below).
+# not a local build step - see the note below).
 
 # Exit immediately if a command exits with a non-zero status, and treat unset variables as an error.
 set -euo pipefail

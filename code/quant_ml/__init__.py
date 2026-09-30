@@ -1,5 +1,5 @@
 """
-quant_ml — Quantis Machine Learning & Quantitative Finance Package
+quant_ml - Quantis Machine Learning & Quantitative Finance Package
 ==================================================================
 
 Subpackages
@@ -7,7 +7,7 @@ Subpackages
 data        : Data ingestion, feature engineering, and feature store integration
 models      : Time-series models (TFT, LSTM), training, hyperparameter tuning, deployment
 monitoring  : Operational metrics collection (CloudWatch)
-quant       : Advanced quantitative finance — risk metrics, portfolio optimisation,
+quant       : Advanced quantitative finance - risk metrics, portfolio optimisation,
               alpha signals, backtesting, regime detection, execution modelling
 
 Quick start

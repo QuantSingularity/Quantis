@@ -3,7 +3,7 @@ Model serving utilities for Quantis.
 Wraps trained models for MLflow pyfunc deployment.
 
 Fixes vs original:
-- torch.load now uses weights_only=True (security fix — prevents arbitrary pickle execution)
+- torch.load now uses weights_only=True (security fix - prevents arbitrary pickle execution)
 - Added proper error response shape to /model/deploy endpoint
 - Removed duplicate ModelWrapper class (was also defined in train_model.py)
 """

@@ -2,7 +2,7 @@
 # test_runner.sh - Comprehensive test runner for Quantis project
 #
 # This script automates the testing process for all components of the Quantis project:
-# - Backend tests (code/backend/tests — a single flat suite; this repo does
+# - Backend tests (code/backend/tests - a single flat suite; this repo does
 #   not separate "unit" from "integration" tests into their own
 #   directories, so --unit and --integration both run that same suite)
 # - Web frontend tests (Vitest)

@@ -41,7 +41,7 @@ else
     # shellcheck source=/dev/null
     source "${PYTHON_VENV}/bin/activate"
 
-    # Ensure pytest and the coverage plugin are installed independently —
+    # Ensure pytest and the coverage plugin are installed independently -
     # a system could have pytest but not pytest-cov, which would otherwise
     # crash the --cov invocation below.
     if ! command -v pytest &> /dev/null; then
@@ -109,7 +109,7 @@ fi
 
 echo "----------------------------------------"
 if [ "${OVERALL_STATUS}" -eq 0 ]; then
-  echo -e "${GREEN}Quantis test suite finished — all suites passed!${NC}"
+  echo -e "${GREEN}Quantis test suite finished - all suites passed!${NC}"
 else
   echo -e "${RED}Quantis test suite finished with failures. See above for details.${NC}"
 fi

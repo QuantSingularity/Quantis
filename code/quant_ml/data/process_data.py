@@ -3,7 +3,7 @@ Data processing engine for the Quantis ML pipeline.
 
 Fixes vs original:
 - DataEngine.process() was calling fit_transform on a Dask DataFrame directly,
-  which sklearn pipelines don't support — now converts to pandas first.
+  which sklearn pipelines don't support - now converts to pandas first.
 - create_temporal_features used groupby on Dask which requires compute(); fixed.
 - Added missing financial time-series feature engineering helpers.
 """

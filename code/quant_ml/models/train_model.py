@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 class GatedResidualNetwork(nn.Module):
-    """Gated Residual Network block — core building block of TFT."""
+    """Gated Residual Network block - core building block of TFT."""
 
     def __init__(
         self, input_size: int, hidden_size: int, output_size: int, dropout: float = 0.1
@@ -149,9 +149,9 @@ def train_model(
 ) -> Any:
     """
     Train a model. Supports two call signatures:
-      1. train_model(model, X_train, y_train, mlflow_tracker)  — for tests
-      2. train_model(data_path, params)                         — legacy usage
-      3. train_model(None)                                      — uses default params
+      1. train_model(model, X_train, y_train, mlflow_tracker)  - for tests
+      2. train_model(data_path, params)                         - legacy usage
+      3. train_model(None)                                      - uses default params
     """
     if model_or_data_path is None:
         model_or_data_path = "default"

@@ -2,7 +2,7 @@
 Portfolio Optimisation
 ======================
 Mean-Variance (Markowitz), Risk Parity, and Black-Litterman portfolio
-construction — the three pillars of quantitative portfolio management.
+construction - the three pillars of quantitative portfolio management.
 
 Requires: numpy, pandas, scipy.
 Optional: cvxpy (for constrained MVO).

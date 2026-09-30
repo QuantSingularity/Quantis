@@ -3,7 +3,7 @@
 # Quantis Project Setup Script (Comprehensive)
 #
 # Installs dependencies for the backend API, web frontend, and mobile
-# frontend. Safe to re-run — each section is independent and best-effort
+# frontend. Safe to re-run - each section is independent and best-effort
 # (a missing/optional component is skipped with a warning rather than
 # aborting the whole setup).
 
@@ -130,7 +130,7 @@ else
           echo "To start the Mobile Frontend dev server (from ${MOBILE_FRONTEND_DIR}): npm start"
           echo "  Then press 'a' for Android, 'i' for iOS, or 'w' for web in the Expo CLI."
           echo "Native production builds are produced via EAS Build (https://docs.expo.dev/build/introduction/),"
-          echo "not a local 'npm run build' — there is no such script for Expo apps."
+          echo "not a local 'npm run build' - there is no such script for Expo apps."
       fi
     )
 fi

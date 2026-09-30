@@ -166,7 +166,7 @@ build_models() {
     fi
 
     # quant_ml is a library imported by the backend, not a standalone
-    # service — it shares the backend's virtual environment rather than
+    # service - it shares the backend's virtual environment rather than
     # having its own venv/requirements.txt/setup.py.
     VENV_DIR="${PROJECT_ROOT}/venv"
     if [ ! -d "${VENV_DIR}" ]; then
@@ -209,7 +209,7 @@ build_web_frontend() {
       npm install --no-audit --no-fund
 
       # The web frontend has a single Vite "build" script (no separate
-      # build:dev variant) — Vite already picks the right mode/env file
+      # build:dev variant) - Vite already picks the right mode/env file
       # based on NODE_ENV / --mode, so both dev and prod builds use it.
       echo "Building web frontend for $ENV environment..."
       if [ "$ENV" = "production" ]; then
@@ -244,7 +244,7 @@ build_mobile_frontend() {
         echo "Exporting a static web bundle (npx expo export --platform web)..."
         npx expo export --platform web
         echo "Note: native iOS/Android binaries are produced via EAS Build, not"
-        echo "by this script — see https://docs.expo.dev/build/introduction/"
+        echo "by this script - see https://docs.expo.dev/build/introduction/"
       else
         echo "Mobile frontend is ready. Start it with: npm start"
       fi

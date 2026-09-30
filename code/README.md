@@ -83,7 +83,7 @@ JWT_SECRET=your-jwt-secret-change-in-production
 # Database (defaults to SQLite)
 DATABASE_URL=sqlite:///./quantis.db
 
-# Redis (optional — enables Celery background tasks)
+# Redis (optional - enables Celery background tasks)
 REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/0
 
@@ -104,7 +104,7 @@ pytest backend/tests/ -v
 pytest backend/tests/test_model.py -v
 ```
 
-## quant_ml — Advanced Quant Finance Usage
+## quant_ml - Advanced Quant Finance Usage
 
 ```python
 from quant_ml.quant import (

@@ -2,7 +2,7 @@
 
 # Linting and Fixing Script for Quantis Project (Python, JavaScript/TypeScript, YAML)
 
-set -uo pipefail  # Don't hard-exit on the first lint failure — we want to run every tool and report a summary.
+set -uo pipefail  # Don't hard-exit on the first lint failure - we want to run every tool and report a summary.
 
 # Always operate relative to the actual repository root, regardless of
 # where this script is invoked from.
@@ -64,7 +64,7 @@ echo "----------------------------------------"
 echo "Installing/Updating Python linting tools..."
 pip3 install --upgrade --quiet black isort flake8 pylint
 
-# Define directories to process — these match the actual repository layout
+# Define directories to process - these match the actual repository layout
 # (code/backend/* for the API, code/quant_ml for the ML library).
 PYTHON_DIRECTORIES=(
   "code/backend"
@@ -182,7 +182,7 @@ for project in "${JS_PROJECT_DIRECTORIES[@]}"; do
     continue
   fi
   if [ ! -d "${project_path}/node_modules" ]; then
-    echo "node_modules not found in $project — installing dependencies first..."
+    echo "node_modules not found in $project - installing dependencies first..."
     (cd "${project_path}" && npm install --no-audit --no-fund) || {
       echo "Failed to install dependencies in $project. Skipping lint for this project."
       LINT_FAILURES=$((LINT_FAILURES + 1))

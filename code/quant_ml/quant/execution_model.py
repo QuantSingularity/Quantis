@@ -82,7 +82,7 @@ class AlmgrenChrissModel:
         Args:
             order_shares: Total shares to execute (positive=buy, negative=sell).
             horizon_days: Number of days over which to execute.
-            risk_aversion: Lambda (risk aversion coefficient) — higher = faster execution.
+            risk_aversion: Lambda (risk aversion coefficient) - higher = faster execution.
 
         Returns:
             DataFrame with columns: day, shares_to_trade, cumulative_executed,

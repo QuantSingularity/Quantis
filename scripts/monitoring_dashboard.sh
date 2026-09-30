@@ -34,7 +34,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # The project's real, already-configured monitoring stack lives at
 # infrastructure/monitoring (with prometheus.yml, alert_rules.yml,
-# grafana_dashboards/, grafana_provisioning/ already committed) — not a
+# grafana_dashboards/, grafana_provisioning/ already committed) - not a
 # fabricated top-level "monitoring" directory.
 MONITORING_DIR="$PROJECT_ROOT/infrastructure/monitoring"
 GRAFANA_DIR="$MONITORING_DIR/grafana_dashboards"
@@ -81,7 +81,7 @@ check_dependencies() {
         exit 1
     fi
 
-    # Check Docker Compose — prefer the v1 standalone binary if present,
+    # Check Docker Compose - prefer the v1 standalone binary if present,
     # otherwise fall back to the v2 "docker compose" plugin subcommand
     # (v1 is deprecated and often no longer installed on current systems).
     if command_exists docker-compose; then
@@ -109,9 +109,9 @@ setup_monitoring() {
     # This repository already ships real, curated monitoring configuration
     # under infrastructure/monitoring (prometheus.yml, alert_rules.yml,
     # grafana_dashboards/, grafana_provisioning/). Never blindly overwrite
-    # those with generic boilerplate — only create files that don't exist yet.
+    # those with generic boilerplate - only create files that don't exist yet.
     if [ -f "$MONITORING_DIR/docker-compose.yml" ]; then
-        echo -e "${YELLOW}$MONITORING_DIR/docker-compose.yml already exists — leaving it untouched.${NC}"
+        echo -e "${YELLOW}$MONITORING_DIR/docker-compose.yml already exists - leaving it untouched.${NC}"
         echo -e "${YELLOW}Delete it first if you want this script to regenerate it.${NC}"
         echo -e "${GREEN}Monitoring stack setup completed (nothing to do).${NC}"
         return
@@ -159,11 +159,11 @@ volumes:
   grafana_data:
 EOF
 
-    # Create Prometheus configuration file (only if one doesn't already exist —
+    # Create Prometheus configuration file (only if one doesn't already exist -
     # this repo ships a real, tailored prometheus.yml that must not be
     # silently replaced with generic placeholder scrape targets).
     if [ -f "$MONITORING_DIR/prometheus.yml" ]; then
-        echo -e "${YELLOW}$MONITORING_DIR/prometheus.yml already exists — leaving it untouched.${NC}"
+        echo -e "${YELLOW}$MONITORING_DIR/prometheus.yml already exists - leaving it untouched.${NC}"
     else
     cat > "$MONITORING_DIR/prometheus.yml" << EOF
 global:
@@ -207,7 +207,7 @@ EOF
 
     # Create Grafana datasource configuration (skip if one already exists)
     if [ -f "$MONITORING_DIR/grafana_provisioning/datasources/prometheus.yml" ]; then
-        echo -e "${YELLOW}Grafana datasource config already exists — leaving it untouched.${NC}"
+        echo -e "${YELLOW}Grafana datasource config already exists - leaving it untouched.${NC}"
     else
     cat > "$MONITORING_DIR/grafana_provisioning/datasources/prometheus.yml" << EOF
 apiVersion: 1
@@ -227,7 +227,7 @@ EOF
     # already used by this repo, "dashboard.yml").
     if [ -f "$MONITORING_DIR/grafana_provisioning/dashboards/dashboards.yml" ] || \
        [ -f "$MONITORING_DIR/grafana_provisioning/dashboards/dashboard.yml" ]; then
-        echo -e "${YELLOW}Grafana dashboard provisioning config already exists — leaving it untouched.${NC}"
+        echo -e "${YELLOW}Grafana dashboard provisioning config already exists - leaving it untouched.${NC}"
     else
     cat > "$MONITORING_DIR/grafana_provisioning/dashboards/dashboards.yml" << EOF
 apiVersion: 1

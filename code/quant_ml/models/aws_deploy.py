@@ -3,7 +3,7 @@ AWS deployment utilities for Quantis models.
 
 Fixes vs original:
 - deploy_to_aws: s3_key used raw model_path (could include full local path)
-  — now uses os.path.basename() so the S3 key is clean.
+  - now uses os.path.basename() so the S3 key is clean.
 - Removed eager os.path.exists() guard: the test suite mocks boto3.client and
   passes a non-existent path deliberately; the exists() check fired before the
   mock could intercept, causing test_aws_deployment and test_error_handling to

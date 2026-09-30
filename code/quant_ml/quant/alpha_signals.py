@@ -161,7 +161,7 @@ def z_score_mean_reversion(
     lookback: int = 60,
 ) -> pd.DataFrame:
     """
-    Z-score of price relative to its rolling mean — classic stat-arb signal.
+    Z-score of price relative to its rolling mean - classic stat-arb signal.
     Negative z-score → expected reversion upward (buy signal).
 
     Returns:

@@ -98,8 +98,8 @@ if [ "${READY}" -ne 1 ]; then
 fi
 
 echo -e "${GREEN}Quantis application is running!${NC}"
-echo -e "${GREEN}API running with PID: ${API_PID} — http://localhost:8000${NC}"
-echo -e "${GREEN}Frontend running with PID: ${FRONTEND_PID} — http://localhost:3000${NC}"
+echo -e "${GREEN}API running with PID: ${API_PID} - http://localhost:8000${NC}"
+echo -e "${GREEN}Frontend running with PID: ${FRONTEND_PID} - http://localhost:3000${NC}"
 echo -e "${BLUE}Press Ctrl+C to stop all services${NC}"
 
 # Keep script running until interrupted; if either child exits on its own,

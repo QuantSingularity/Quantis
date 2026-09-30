@@ -39,7 +39,7 @@ SETUP_MONITORING=false
 SETUP_ALL=false
 ENV="development"
 # Resolve the actual repository root instead of trusting the caller's
-# current directory — otherwise every path below silently resolves to the
+# current directory - otherwise every path below silently resolves to the
 # wrong place depending on where this script happens to be invoked from.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"

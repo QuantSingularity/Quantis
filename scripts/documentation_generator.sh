@@ -465,7 +465,7 @@ This directory contains the machine learning library used by the Quantis API.
 ## Overview
 
 quant_ml provides predictive analytics for trading strategies and portfolio optimization,
-and is imported directly by the backend (code/backend) — it is not a standalone service
+and is imported directly by the backend (code/backend) - it is not a standalone service
 and shares the backend's virtual environment and dependencies.
 
 ## Getting Started
@@ -667,7 +667,7 @@ Run the application startup script:
 \`\`\`
 
 This script will:
-- Start the API server (which imports the quant_ml library directly — there
+- Start the API server (which imports the quant_ml library directly - there
   is no separate standalone model service)
 - Start the web frontend
 - Wait for the API to become healthy before reporting success
@@ -694,7 +694,7 @@ Check the following:
 Check the following:
 - Ensure Python dependencies are installed in the shared virtual environment
 - Verify the \`code/quant_ml\` package imports cleanly: \`python3 -c "import code.quant_ml"\`
-- Check the API server logs — quant_ml is imported directly by the backend,
+- Check the API server logs - quant_ml is imported directly by the backend,
   so import errors surface there rather than in a separate service log
 
 #### Frontend Won't Load

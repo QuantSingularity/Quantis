@@ -16,7 +16,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Always operate on this script's own directory, not the caller's current
-# working directory — otherwise "find ." would scan (and chmod) unrelated
+# working directory - otherwise "find ." would scan (and chmod) unrelated
 # shell scripts anywhere under wherever this happened to be invoked from.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

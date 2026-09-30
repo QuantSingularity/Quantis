@@ -1,5 +1,5 @@
 """
-quant_ml.quant — Advanced Quantitative Finance Module
+quant_ml.quant - Advanced Quantitative Finance Module
 ======================================================
 
 Submodules

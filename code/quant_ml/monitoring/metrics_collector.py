@@ -61,7 +61,7 @@ class MetricsCollector:
 
         if metric_name not in VALID_METRICS:
             logger.warning(
-                "Unknown metric '%s' — recording anyway. Known metrics: %s",
+                "Unknown metric '%s' - recording anyway. Known metrics: %s",
                 metric_name,
                 VALID_METRICS,
             )

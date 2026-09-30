@@ -45,7 +45,7 @@ def register_model(model_name: str, run_id: Optional[str]) -> None:
     if not MLFLOW_AVAILABLE:
         return
     if not run_id:
-        logger.warning("register_model called with empty run_id — skipping.")
+        logger.warning("register_model called with empty run_id - skipping.")
         return
     model_uri = f"runs:/{run_id}/model"
     try:

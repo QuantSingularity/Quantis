@@ -42,7 +42,7 @@ LINT_ALL=false
 AUTO_FIX=false
 GENERATE_REPORT=false
 # Resolve the actual repository root regardless of the caller's current
-# directory — using $(pwd) here meant running this script from inside
+# directory - using $(pwd) here meant running this script from inside
 # scripts/ (a very natural way to invoke it) silently limited every "find"
 # below to the scripts/ directory itself, reporting "no files found" for
 # every category.
