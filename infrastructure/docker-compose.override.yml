@@ -8,13 +8,13 @@ services:
       context: ../
       dockerfile: infrastructure/Dockerfile.api
     volumes:
-      - ../:/app
+      - ../code:/app
     environment:
       - LOG_LEVEL=debug
     command:
       [
         "uvicorn",
-        "app.main:app",
+        "backend.core.app:app",
         "--host",
         "0.0.0.0",
         "--port",
