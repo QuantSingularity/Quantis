@@ -195,8 +195,8 @@ jobs:
   # ============================================================
   # Job 4 -- Web Frontend Build
   # ============================================================
-  frontend_build:
-    name: Frontend Build
+  web-frontend_build:
+    name: Web-Frontend Build
     runs-on: ubuntu-latest
     needs: code_quality
 
